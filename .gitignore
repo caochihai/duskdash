@@ -1,0 +1,26 @@
+# Secrets — TUYỆT ĐỐI không commit
+.env
+**/.env
+*.key
+
+# Dữ liệu runtime & log
+backend/data/
+backend/logs/
+**/data/*.db
+**/data/*.db-wal
+**/data/*.db-shm
+
+# Python
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.venv/
+venv/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
