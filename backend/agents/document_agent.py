@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from agents.base import build_agent_app  # noqa: E402
 from common import config, llm, mcp_client  # noqa: E402
+from gateway import db  # noqa: E402
 from common.schemas import (  # noqa: E402
     AgentCard, AgentSkill, Envelope, Evidence, Verdict, VerdictDecision,
 )
@@ -48,6 +49,12 @@ _extractions: dict[str, dict] = {}
 
 async def _extract_one(doc: dict) -> tuple[str, dict]:
     dtype = doc.get("doc_type", "unknown")
+    if doc.get("doc_id"):
+        stored = db.get_document(doc["doc_id"])
+        if stored:
+            facts = [fact for fact in db.list_case_facts(stored["case_id"])
+                     if fact["document_id"] == doc["doc_id"] and fact["key"] != "raw_text_block"]
+            return dtype, {fact["key"]: fact["value"] for fact in facts}
     if "extracted" in doc:  # đã có dữ liệu cấu trúc (fixtures / đã trích xuất)
         return dtype, doc["extracted"]
     if config.LLM_MODE in ("llm", "hybrid") and doc.get("image_path"):
