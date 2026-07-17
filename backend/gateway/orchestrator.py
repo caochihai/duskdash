@@ -16,6 +16,7 @@ from common.schemas import (
     ApprovalPackage, CaseState, Envelope, MessageType, Plan, Verdict, VerdictDecision,
 )
 from . import approval, db, planner
+from .replanning import invalidated_tasks
 
 
 async def _emit(case_id: str, agent: str, etype: str, payload: dict | None = None):
@@ -213,12 +214,21 @@ async def supplement_and_replan(case_id: str, documents: list[dict]) -> dict:
                     {"state": CaseState.ESCALATED.value,
                      "reason": f"vượt giới hạn {config.MAX_REPLAN_ROUNDS} vòng re-plan"})
         return {"status": "escalated"}
+    plan_raw = db.get_latest_plan(case_id)
+    changed_inputs = {doc.get("doc_type", "document") for doc in documents}
+    invalidated: set[str] = set()
+    if plan_raw:
+        try:
+            invalidated = invalidated_tasks(Plan(**plan_raw), changed_inputs)
+        except Exception:  # noqa: BLE001
+            invalidated = set()
     payload = case["payload"]
     payload["documents"] = payload.get("documents", []) + documents
     db.update_case(case_id, payload=payload, replan_count=case["replan_count"] + 1)
     await _emit(case_id, "hitl", "documents_supplemented",
                 {"count": len(documents)})
     await _emit(case_id, "planner", "replan_triggered",
-                {"reason": "bổ sung hồ sơ", "round": case["replan_count"] + 1})
+                {"reason": "bổ sung hồ sơ", "round": case["replan_count"] + 1,
+                 "invalidated_tasks": sorted(invalidated)})
     asyncio.create_task(run_analysis(case_id))
     return {"status": "replanning"}

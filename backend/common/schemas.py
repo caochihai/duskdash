@@ -65,6 +65,8 @@ class PlanTask(BaseModel):
     objective: str
     depends_on: list[str] = Field(default_factory=list)
     params: dict[str, Any] = Field(default_factory=dict)
+    affects: list[str] = Field(default_factory=list)
+    max_attempts: int = 1
 
 
 class Plan(BaseModel):
@@ -85,6 +87,10 @@ class Plan(BaseModel):
             for d in t.depends_on:
                 if d not in ids:
                     errors.append(f"task {t.task_id}: depends_on '{d}' không tồn tại")
+            if t.max_attempts < 1 or t.max_attempts > 3:
+                errors.append(f"task {t.task_id}: max_attempts must be 1..3")
+            if t.params.get("phase") == "commit":
+                errors.append(f"task {t.task_id}: commit task is forbidden in an analysis plan")
         # kiểm tra chu trình bằng topo-sort đơn giản
         remaining = {t.task_id: set(t.depends_on) for t in self.tasks}
         while remaining:
@@ -96,6 +102,10 @@ class Plan(BaseModel):
                 remaining.pop(k)
             for deps in remaining.values():
                 deps.difference_update(ready)
+        required_agents = {"credit", "compliance", "operations", "validation"}
+        missing = required_agents - {task.agent for task in self.tasks}
+        if missing:
+            errors.append(f"missing required agents: {', '.join(sorted(missing))}")
         return errors
 
 
