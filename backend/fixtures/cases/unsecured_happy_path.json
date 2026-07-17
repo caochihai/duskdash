@@ -1,0 +1,15 @@
+{
+  "scenario": "unsecured_happy_path",
+  "expected": {"after_run": "Pending Approval", "after_approval": "Completed", "credit": "approve", "compliance": "clear"},
+  "case": {
+    "request": {"business_id": "SYN-ALPHA-001", "amount": 2800000000, "term_months": 12, "purpose": "Bổ sung vốn lưu động mua hạt nhựa bao bì cho đơn hàng quý IV", "has_collateral": false},
+    "submitted_by": "rm_demo_lan",
+    "documents": [
+      {"doc_type": "dkkd", "extracted": {"company_name": "Công ty TNHH Bao Bì Ánh Dương", "tax_code": "0312345678", "legal_rep_name": "Trần Minh Khoa", "business_lines": ["Sản xuất bao bì nhựa"], "registered_capital": 12000000000}},
+      {"doc_type": "bctc", "extracted": {"year": 2025, "revenue": 18600000000, "ebitda": 3100000000, "total_debt": 2900000000, "equity": 9800000000, "debt_service": 1800000000}},
+      {"doc_type": "sao_ke", "extracted": {"account_number": "102600123456", "period_months": 12, "total_inflow": 17900000000, "avg_monthly_inflow": 1491666667}},
+      {"doc_type": "cccd", "extracted": {"full_name": "Trần Minh Khoa", "id_number": "079123456789", "date_of_birth": "1986-05-18"}}
+    ]
+  },
+  "narrative": "Doanh nghiệp bao bì có hợp đồng khung với ba khách hàng FMCG giả lập. Doanh thu sao kê đạt 96% BCTC, DSCR 1.72 và CIC nhóm 1."
+}

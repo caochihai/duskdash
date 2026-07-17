@@ -1,0 +1,16 @@
+{
+  "scenario": "collateral_missing_owner_evidence",
+  "expected": {"after_run": "Needs Info", "after_supplement": "Pending Approval", "invalidated_tasks": ["document", "compliance", "operations", "validation"]},
+  "case": {
+    "request": {"business_id": "SYN-BRAVO-002", "amount": 6500000000, "term_months": 24, "purpose": "Đầu tư dây chuyền rang xay và kho nguyên liệu", "has_collateral": true, "collateral_id": "SYN-COL-002"},
+    "submitted_by": "rm_demo_huy",
+    "documents": [
+      {"doc_type": "dkkd", "extracted": {"company_name": "Công ty Cổ phần Cà Phê Mây Cao", "tax_code": "0309988776", "legal_rep_name": "Lê Thu Hà", "business_lines": ["Chế biến cà phê"], "registered_capital": 18000000000}},
+      {"doc_type": "bctc", "extracted": {"year": 2025, "revenue": 32500000000, "ebitda": 5600000000, "total_debt": 7100000000, "equity": 21000000000, "debt_service": 3100000000}},
+      {"doc_type": "sao_ke", "extracted": {"account_number": "102600987654", "period_months": 12, "total_inflow": 30100000000, "avg_monthly_inflow": 2508333333}},
+      {"doc_type": "so_do", "extracted": {"owner_name": "Nguyễn Văn Phúc", "address": "Thửa đất synthetic 88, huyện Dương Minh", "area_m2": 420, "certificate_no": "SYN-GCN-8899"}}
+    ]
+  },
+  "supplement": [{"doc_type": "so_do", "extracted": {"owner_name": "Công ty Cổ phần Cà Phê Mây Cao", "address": "Thửa đất synthetic 88, huyện Dương Minh", "area_m2": 420, "certificate_no": "SYN-GCN-8899", "security_provider_consent": true}}],
+  "narrative": "Hồ sơ ban đầu ghi chủ tài sản khác pháp nhân vay; sau đó nộp phụ lục chuyển quyền và văn bản đồng ý bảo đảm giả lập."
+}

@@ -1,0 +1,14 @@
+{
+  "scenario": "policy_changed_after_approval",
+  "expected": {"after_run": "Pending Approval", "after_policy_change_commit": "In Analysis", "token_valid": false, "reason_contains": "policy"},
+  "case": {
+    "request": {"business_id": "SYN-CHARLIE-003", "amount": 4200000000, "term_months": 18, "purpose": "Mở rộng xưởng cơ khí phụ trợ", "has_collateral": false},
+    "submitted_by": "rm_demo_mai",
+    "documents": [
+      {"doc_type": "dkkd", "extracted": {"company_name": "Công ty TNHH Cơ Khí Nam Sơn", "tax_code": "0311122334", "legal_rep_name": "Phạm Quốc Nam", "business_lines": ["Gia công cơ khí"], "registered_capital": 15000000000}},
+      {"doc_type": "bctc", "extracted": {"year": 2025, "revenue": 24000000000, "ebitda": 4100000000, "total_debt": 3900000000, "equity": 12500000000, "debt_service": 2300000000}},
+      {"doc_type": "sao_ke", "extracted": {"account_number": "102601112233", "period_months": 12, "total_inflow": 22900000000, "avg_monthly_inflow": 1908333333}}
+    ]
+  },
+  "policy_transition": {"before": "2026.07", "after": "2026.08", "change": "Cập nhật synthetic policy version sau khi approval package đã được ký"}
+}
