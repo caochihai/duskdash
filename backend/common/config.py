@@ -25,6 +25,17 @@ MCP_CORE_BANKING_URL = os.getenv(
     "MCP_CORE_BANKING_URL", f"http://{HOST}:{MCP_CORE_BANKING_PORT}/mcp"
 )
 
+# UI origins are explicit by default.  A wildcard would allow an arbitrary site
+# to invoke a browser session against the gateway in a production deployment.
+ALLOWED_CORS_ORIGINS = tuple(
+    origin.strip()
+    for origin in os.getenv(
+        "ALLOWED_CORS_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://127.0.0.1:5173",
+    ).split(",")
+    if origin.strip()
+)
+
 
 def agent_url(name: str) -> str:
     return f"http://{HOST}:{AGENT_PORTS[name]}"
@@ -72,3 +83,6 @@ UPLOADS_DIR = DATA_DIR / "uploads"
 UPLOADS_DIR.mkdir(exist_ok=True)
 LOGS_DIR = BACKEND_DIR / "logs"
 LOGS_DIR.mkdir(exist_ok=True)
+
+MAX_DOCUMENT_SIZE_BYTES = int(os.getenv("MAX_DOCUMENT_SIZE_BYTES", str(15 * 1024 * 1024)))
+MAX_DOCUMENT_PAGES = int(os.getenv("MAX_DOCUMENT_PAGES", "50"))

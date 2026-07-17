@@ -22,13 +22,15 @@ def package_hash(package: dict) -> str:
 def issue(case_id: str, package: dict, approver: str) -> dict:
     token = f"apv_{uuid.uuid4().hex}"
     expires_at = time.time() + config.APPROVAL_TOKEN_TTL_SECONDS
-    db.save_token(token, case_id, package_hash(package),
-                  config.POLICY_VERSION, approver, expires_at)
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    db.save_token(token_hash, case_id, package_hash(package), config.POLICY_VERSION,
+                  int(package["plan_version"]), "commit", approver, expires_at)
     return {"token": token, "expires_at": expires_at}
 
 
-def verify(case_id: str, token: str) -> dict:
-    rec = db.get_token(token)
+def verify(case_id: str, token: str, scope: str = "commit") -> dict:
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    rec = db.get_token(token_hash)
     if not rec or rec["case_id"] != case_id:
         return {"valid": False, "reason": "token không tồn tại hoặc sai case"}
     if rec["used"]:
@@ -46,5 +48,9 @@ def verify(case_id: str, token: str) -> dict:
     if current_hash != rec["package_hash"]:
         return {"valid": False,
                 "reason": "nội dung Approval Package đã thay đổi sau phê duyệt (hash lệch)"}
-    db.mark_token_used(token)
+    if rec["plan_version"] != case["package"].get("plan_version"):
+        return {"valid": False, "reason": "plan version changed after approval"}
+    if rec["scope"] != scope:
+        return {"valid": False, "reason": "approval token scope is not permitted"}
+    db.mark_token_used(token_hash)
     return {"valid": True, "approver": rec["approver"]}

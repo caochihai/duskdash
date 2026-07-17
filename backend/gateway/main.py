@@ -14,17 +14,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import httpx  # noqa: E402
 import uvicorn  # noqa: E402
-from fastapi import BackgroundTasks, FastAPI  # noqa: E402
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from pydantic import BaseModel  # noqa: E402
 from sse_starlette.sse import EventSourceResponse  # noqa: E402
 
 from common import config, mcp_client, rag  # noqa: E402
 from common.schemas import CaseCreate, CaseState, new_id  # noqa: E402
-from gateway import approval, db, orchestrator, planner  # noqa: E402
+from gateway import approval, db, orchestrator, planner, metrics  # noqa: E402
+from documents import pipeline  # noqa: E402
+from common.security import permission_dependency  # noqa: E402
 
 app = FastAPI(title="SHB Digital Expert Agents — Gateway")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
+app.add_middleware(CORSMiddleware, allow_origins=list(config.ALLOWED_CORS_ORIGINS), allow_methods=["*"],
                    allow_headers=["*"])
 
 # ---- SSE broadcast ----
@@ -36,15 +38,48 @@ async def broadcast(event: dict) -> None:
         await q.put(event)
 
 
+async def _process_document(case_id: str, document_id: str) -> None:
+    """Run blocking parsing off the event loop and publish its terminal state."""
+    try:
+        document = await asyncio.to_thread(pipeline.process, document_id)
+        event_type = ("document.processing_completed"
+                      if document["processing_status"] == "completed"
+                      else "document.processing_needs_review")
+        await broadcast(db.add_event(case_id, "document", event_type, {
+            "document_id": document_id, "status": document["processing_status"],
+            "metadata": document["metadata"],
+        }))
+    except Exception as exc:  # noqa: BLE001
+        db.update_document(document_id, processing_status="failed", metadata={"reason": str(exc)})
+        await broadcast(db.add_event(case_id, "document", "document.processing_failed", {
+            "document_id": document_id, "reason": str(exc),
+        }))
+
+
 @app.on_event("startup")
 async def startup() -> None:
     db.init()
     asyncio.create_task(_sla_watcher())
 
 
+@app.get("/health/live")
+async def health_live() -> dict:
+    return {"status": "live"}
+
+
+@app.get("/health/ready")
+async def health_ready() -> dict:
+    try:
+        db.init()
+        return {"status": "ready", "provider": config.LLM_MODE}
+    except Exception as exc:  # noqa: BLE001
+        return {"status": "not_ready", "reason": str(exc)}
+
+
 # ---- Cases ----
 @app.post("/cases")
-async def create_case(body: CaseCreate) -> dict:
+async def create_case(body: CaseCreate,
+                      _: str = Depends(permission_dependency("case:create"))) -> dict:
     case_id = new_id("case")
     db.create_case(case_id, body.model_dump(mode="json"))
     await broadcast(db.add_event(case_id, "gateway", "case_created", {
@@ -56,11 +91,42 @@ async def create_case(body: CaseCreate) -> dict:
 
 
 @app.post("/cases/{case_id}/run")
-async def run_case(case_id: str, background: BackgroundTasks) -> dict:
+async def run_case(case_id: str, background: BackgroundTasks,
+                   _: str = Depends(permission_dependency("case:run"))) -> dict:
     if db.get_case(case_id) is None:
         return {"error": "case không tồn tại"}
     background.add_task(orchestrator.run_analysis, case_id)
     return {"status": "started"}
+
+
+@app.post("/cases/{case_id}/documents")
+async def upload_document(case_id: str, background: BackgroundTasks,
+                          document_type: str = Form(...), file: UploadFile = File(...),
+                          _: str = Depends(permission_dependency("case:supplement"))) -> dict:
+    if db.get_case(case_id) is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    content = await file.read(config.MAX_DOCUMENT_SIZE_BYTES + 1)
+    try:
+        document = pipeline.ingest(case_id, document_type, file.filename or "upload", content)
+    except pipeline.DocumentValidationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    case = db.get_case(case_id)
+    payload = case["payload"]
+    payload.setdefault("documents", []).append({"doc_id": document["document_id"],
+                                                  "doc_type": document_type})
+    db.update_case(case_id, payload=payload)
+    await broadcast(db.add_event(case_id, "document", "document.processing_started", {
+        "document_id": document["document_id"], "document_type": document_type,
+    }))
+    background.add_task(_process_document, case_id, document["document_id"])
+    return {"document_id": document["document_id"], "status": "queued"}
+
+
+@app.get("/cases/{case_id}/documents")
+async def get_documents(case_id: str) -> list[dict]:
+    if db.get_case(case_id) is None:
+        raise HTTPException(status_code=404, detail="Case not found")
+    return db.list_documents(case_id)
 
 
 @app.get("/cases/{case_id}")
@@ -111,7 +177,8 @@ class SupplementBody(BaseModel):
 
 
 @app.post("/cases/{case_id}/approve")
-async def approve(case_id: str, body: ApproveBody, background: BackgroundTasks) -> dict:
+async def approve(case_id: str, body: ApproveBody, background: BackgroundTasks,
+                  _: str = Depends(permission_dependency("case:approve"))) -> dict:
     case = db.get_case(case_id)
     if not case or case["state"] != CaseState.PENDING_APPROVAL.value:
         return {"error": "case không ở trạng thái Pending Approval"}
@@ -123,15 +190,23 @@ async def approve(case_id: str, body: ApproveBody, background: BackgroundTasks) 
 
 
 @app.post("/cases/{case_id}/reject")
-async def reject(case_id: str, body: RejectBody) -> dict:
-    db.update_case(case_id, state=CaseState.REJECTED.value, approver=body.approver)
+async def reject(case_id: str, body: RejectBody,
+                 _: str = Depends(permission_dependency("case:reject"))) -> dict:
+    case = db.get_case(case_id)
+    if not case:
+        return {"error": "case khÃ´ng tá»“n táº¡i"}
+    try:
+        db.update_case(case_id, state=CaseState.REJECTED.value, approver=body.approver)
+    except ValueError as exc:
+        return {"error": str(exc)}
     await broadcast(db.add_event(case_id, "hitl", "rejected",
                                  {"approver": body.approver, "reason": body.reason}))
     return {"status": "rejected"}
 
 
 @app.post("/cases/{case_id}/supplement")
-async def supplement(case_id: str, body: SupplementBody) -> dict:
+async def supplement(case_id: str, body: SupplementBody,
+                     _: str = Depends(permission_dependency("case:supplement"))) -> dict:
     return await orchestrator.supplement_and_replan(case_id, body.documents)
 
 
@@ -184,6 +259,30 @@ async def agents() -> list[dict]:
 @app.get("/audit/mcp")
 async def mcp_audit(limit: int = 30) -> list[dict]:
     return await mcp_client.call_tool("get_audit_log", {"limit": limit})
+
+
+@app.get("/cases/{case_id}/audit/verify")
+async def verify_case_audit(case_id: str,
+                            _: str = Depends(permission_dependency("audit:read"))) -> dict:
+    return db.verify_event_chain(case_id)
+
+
+@app.post("/baseline/single-agent/run")
+async def run_single_agent_baseline(case_id: str) -> dict:
+    case = db.get_case(case_id)
+    if case is None:
+        return {"error": "case không tồn tại"}
+    return metrics.single_agent_baseline(case)
+
+
+@app.get("/metrics/comparison")
+async def comparison_metrics(case_id: str) -> dict:
+    case = db.get_case(case_id)
+    if case is None:
+        return {"error": "case không tồn tại"}
+    case["events"] = db.get_events(case_id)
+    return {"single_agent": metrics.single_agent_baseline(case),
+            "multi_agent": metrics.multi_agent_metrics(case)}
 
 
 # ---- SLA watcher: nhắc việc + escalate phê duyệt quá hạn ----
