@@ -19,6 +19,36 @@ from common import config, mcp_client  # noqa: E402
 from common.schemas import (  # noqa: E402
     AgentCard, AgentSkill, Envelope, Evidence, Verdict, VerdictDecision,
 )
+from pydantic import BaseModel  # noqa: E402
+from tools.registry import SideEffect, ToolRegistry, ToolSpec  # noqa: E402
+from tools.runner import ToolRunner  # noqa: E402
+
+
+class CommitLoanArgs(BaseModel):
+    idempotency_key: str
+    case_id: str
+    business_id: str
+    amount: float
+    term_months: int
+
+
+class CommitLoanResult(BaseModel):
+    loan_id: str
+    already_recorded: bool = False
+
+
+async def _commit_loan_tool(args: CommitLoanArgs) -> CommitLoanResult:
+    result = await mcp_client.call_tool("commit_loan", args.model_dump())
+    return CommitLoanResult.model_validate(result)
+
+
+TOOL_REGISTRY = ToolRegistry()
+TOOL_REGISTRY.register(ToolSpec(
+    name="operations.commit_loan", args_model=CommitLoanArgs, result_model=CommitLoanResult,
+    allowed_agents=frozenset({"operations"}), side_effect=SideEffect.WRITE,
+    handler=_commit_loan_tool,
+))
+TOOL_RUNNER = ToolRunner(TOOL_REGISTRY)
 
 CARD = AgentCard(
     agent_id="operations",
@@ -106,7 +136,10 @@ async def _commit(env: Envelope) -> Verdict:
     loan = None
     for attempt in (1, 2):  # tối đa: 1 lần chính + 1 retry sau đối soát
         try:
-            loan = await mcp_client.call_tool("commit_loan", commit_args)
+            loan = (await TOOL_RUNNER.execute(
+                agent_id="operations", phase="commit", tool_name="operations.commit_loan",
+                raw_args=commit_args, case_state="Executing", approval_valid=True,
+            )).model_dump()
             break
         except Exception as e:  # noqa: BLE001 - kết quả mơ hồ (timeout/mất kết nối)
             recon = await mcp_client.call_tool(
