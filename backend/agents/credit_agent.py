@@ -54,7 +54,7 @@ async def _rules_task(env: Envelope) -> Verdict:
                        f"EBITDA {latest['ebitda']:,.0f}, DSCR {dscr:.2f}, đòn bẩy {leverage:.2f}"),
     ]
     for p in rag.search("credit", "DSCR tối thiểu hạn mức vốn lưu động doanh thu"):
-        evidence.append(Evidence(source=f"RAG:{p['source']}", quote=p["text"][:300]))
+        evidence.append(Evidence(source=f"RAG:{p['title']} {p['version']} {p['section']}", quote=p["quote"]))
 
     findings: list[str] = []
     conditions: list[str] = []

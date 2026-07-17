@@ -50,7 +50,7 @@ async def _rules_task(env: Envelope) -> Verdict:
                  quote=f"CIC nhóm {cic.get('cic_group')}, quá hạn {cic.get('overdue_amount', 0):,.0f}"),
     ]
     for p in rag.search("compliance", "KYB danh sách đen AML nhóm nợ LTV tài sản bảo đảm"):
-        evidence.append(Evidence(source=f"RAG:{p['source']}", quote=p["text"][:300]))
+        evidence.append(Evidence(source=f"RAG:{p['title']} {p['version']} {p['section']}", quote=p["quote"]))
 
     findings: list[str] = []
     conditions: list[str] = []
