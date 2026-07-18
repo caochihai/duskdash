@@ -1,0 +1,20 @@
+{
+  "dataset_name": "mock_6_credit_cases",
+  "version": "1.0.0",
+  "is_simulated": true,
+  "cases": [
+    "CR-A01",
+    "CR-B02",
+    "CR-C03",
+    "CR-I01",
+    "CR-I02",
+    "CR-I03"
+  ],
+  "record_counts": {
+    "cases": 6,
+    "accounts": 12,
+    "monthly_feature_rows": 72,
+    "representative_transactions": 60
+  },
+  "notice": "Toàn bộ dữ liệu, tài khoản, mã tham chiếu, đối tác và giấy tờ đều là giả lập."
+}
