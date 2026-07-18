@@ -1,0 +1,28 @@
+{
+  "case_id": "CASE-BORDERLINE-001",
+  "customer_id": "CUS-BORDERLINE-001",
+  "document_manifest": {
+    "total_documents": 1,
+    "total_pages": 1,
+    "documents": [{
+      "document_id": "DOC-BORDERLINE",
+      "document_type": "SAO_KE_NGAN_HANG",
+      "page_count": 1,
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }]
+  },
+  "ocr_pages": [{
+    "document_id": "DOC-BORDERLINE",
+    "page_number": 1,
+    "ocr_text": "Thu nhập công nhận 100, nghĩa vụ hiện hữu 15, nghĩa vụ mới 30.",
+    "ocr_tables": [],
+    "ocr_fields": {"_fixture_verified": true, "_metrics": {
+      "recognized_monthly_income": 100.0,
+      "existing_monthly_debt_service": 15.0,
+      "proposed_monthly_debt_service": 30.0,
+      "highest_cic_group": 1
+    }},
+    "ocr_confidence": 0.98,
+    "page_quality_flag": "OK"
+  }]
+}

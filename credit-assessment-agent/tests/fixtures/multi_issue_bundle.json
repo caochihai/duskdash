@@ -1,0 +1,133 @@
+{
+  "case_id": "CASE-2026-000145",
+  "customer_id": "CUS-000145",
+  "document_manifest": {
+    "total_documents": 1,
+    "total_pages": 5,
+    "documents": [{
+      "document_id": "DOC-LOAN-FILE",
+      "document_type": "KHAC",
+      "page_count": 5,
+      "sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+    }]
+  },
+  "ocr_pages": [
+    {
+      "document_id": "DOC-LOAN-FILE",
+      "page_number": 1,
+      "ocr_text": "Tài sản bảo đảm đang có tranh chấp lối đi chung.",
+      "ocr_tables": [],
+      "ocr_fields": {
+        "_fixture_verified": true,
+        "_metrics": {
+          "declared_monthly_income": 50.0,
+          "recognized_monthly_income": 31.5,
+          "existing_monthly_debt_service": 8.0,
+          "proposed_monthly_debt_service": 20.0,
+          "highest_cic_group": 2,
+          "maximum_dpd": 12,
+          "recent_dpd": 12
+        },
+        "_issues": [{
+          "issue_id": "ISS-001",
+          "category": "HARD_STOP",
+          "severity": "critical",
+          "location": {"document_id": "DOC-LOAN-FILE", "page_number": 1, "field_name": "collateral_legal_status"},
+          "description": "Tài sản bảo đảm có tranh chấp chưa được giải quyết.",
+          "evidence": [{"source": "DOC-LOAN-FILE#page=1", "value": "tranh chấp lối đi chung", "unit": null}],
+          "difference_amount": null,
+          "difference_percent": null,
+          "requires_customer_action": true,
+          "suggested_customer_action": "Cung cấp tài liệu chứng minh tranh chấp đã được giải quyết hoặc tài sản thay thế.",
+          "confidence": 0.99
+        }]
+      },
+      "ocr_confidence": 0.99,
+      "page_quality_flag": "OK"
+    },
+    {
+      "document_id": "DOC-LOAN-FILE",
+      "page_number": 2,
+      "ocr_text": "CIC ghi nhận DPD 12 ngày trong ba tháng gần nhất.",
+      "ocr_tables": [],
+      "ocr_fields": {"_fixture_verified": true, "_issues": [{
+        "issue_id": "ISS-002",
+        "category": "CIC_RED_FLAG",
+        "severity": "high",
+        "location": {"document_id": "DOC-LOAN-FILE", "page_number": 2, "field_name": "recent_dpd"},
+        "description": "Khách hàng có DPD 12 ngày trong ba tháng gần nhất.",
+        "evidence": [{"source": "DOC-LOAN-FILE#page=2", "value": 12, "unit": "day"}],
+        "difference_amount": null,
+        "difference_percent": null,
+        "requires_customer_action": true,
+        "suggested_customer_action": "Giải trình khoản chậm trả 12 ngày và cung cấp chứng từ thanh toán.",
+        "confidence": 0.98
+      }]},
+      "ocr_confidence": 0.99,
+      "page_quality_flag": "OK"
+    },
+    {
+      "document_id": "DOC-LOAN-FILE",
+      "page_number": 3,
+      "ocr_text": "DTI = (8 + 20) / 31.5 = 88.9%.",
+      "ocr_tables": [],
+      "ocr_fields": {"_fixture_verified": true, "_issues": [{
+        "issue_id": "ISS-003",
+        "category": "FINANCIAL_LOGIC_FAIL",
+        "severity": "critical",
+        "location": {"document_id": "DOC-LOAN-FILE", "page_number": 3, "field_name": "dti_percent"},
+        "description": "DTI sau khoản vay mới là 88,9%, vượt xa vùng an toàn.",
+        "evidence": [{"source": "DOC-LOAN-FILE#page=3", "value": 88.9, "unit": "%"}],
+        "difference_amount": null,
+        "difference_percent": 48.9,
+        "requires_customer_action": false,
+        "suggested_customer_action": null,
+        "confidence": 1.0
+      }]},
+      "ocr_confidence": 0.99,
+      "page_quality_flag": "OK"
+    },
+    {
+      "document_id": "DOC-LOAN-FILE",
+      "page_number": 4,
+      "ocr_text": "Thu nhập khai báo 50 nhưng sao kê chỉ thể hiện 31.5, chênh lệch 37%.",
+      "ocr_tables": [],
+      "ocr_fields": {"_fixture_verified": true, "_issues": [{
+        "issue_id": "ISS-004",
+        "category": "CROSS_CHECK_MISMATCH",
+        "severity": "high",
+        "location": {"document_id": "DOC-LOAN-FILE", "page_number": 4, "field_name": "monthly_income"},
+        "description": "Thu nhập khai báo cao hơn thu nhập thực nhận 37%.",
+        "evidence": [{"source": "DOC-LOAN-FILE#page=4", "value": {"declared": 50, "recognized": 31.5}, "unit": "million_vnd"}],
+        "difference_amount": 18.5,
+        "difference_percent": 37.0,
+        "requires_customer_action": true,
+        "suggested_customer_action": "Cung cấp chứng từ chứng minh phần thu nhập chênh lệch 37%.",
+        "confidence": 0.99
+      }]},
+      "ocr_confidence": 0.99,
+      "page_quality_flag": "OK"
+    },
+    {
+      "document_id": "DOC-LOAN-FILE",
+      "page_number": 5,
+      "ocr_text": "Số CCCD trên hợp đồng lao động không khớp hồ sơ định danh.",
+      "ocr_tables": [],
+      "ocr_fields": {"_fixture_verified": true, "_issues": [{
+        "issue_id": "ISS-005",
+        "category": "MINOR_DISCREPANCY",
+        "severity": "medium",
+        "location": {"document_id": "DOC-LOAN-FILE", "page_number": 5, "field_name": "citizen_id"},
+        "description": "Số CCCD trên hợp đồng lao động không khớp hồ sơ định danh.",
+        "evidence": [{"source": "DOC-LOAN-FILE#page=5", "value": "mismatch", "unit": null}],
+        "difference_amount": null,
+        "difference_percent": null,
+        "requires_customer_action": true,
+        "suggested_customer_action": "Điều chỉnh thông tin CCCD trên hợp đồng lao động.",
+        "confidence": 0.97
+      }]},
+      "ocr_confidence": 0.99,
+      "page_quality_flag": "OK"
+    }
+  ]
+}

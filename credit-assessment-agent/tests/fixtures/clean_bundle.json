@@ -1,0 +1,31 @@
+{
+  "case_id": "CASE-CLEAN-001",
+  "customer_id": "CUS-CLEAN-001",
+  "document_manifest": {
+    "total_documents": 1,
+    "total_pages": 1,
+    "documents": [{
+      "document_id": "DOC-CLEAN",
+      "document_type": "BAO_CAO_TAI_CHINH",
+      "page_count": 1,
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    }]
+  },
+  "ocr_pages": [{
+    "document_id": "DOC-CLEAN",
+    "page_number": 1,
+    "ocr_text": "Hồ sơ đầy đủ, dữ liệu nhất quán, CIC nhóm 1.",
+    "ocr_tables": [],
+    "ocr_fields": {"_fixture_verified": true, "_metrics": {
+      "declared_monthly_income": 100.0,
+      "recognized_monthly_income": 100.0,
+      "existing_monthly_debt_service": 10.0,
+      "proposed_monthly_debt_service": 20.0,
+      "highest_cic_group": 1,
+      "maximum_dpd": 0,
+      "recent_dpd": 0
+    }},
+    "ocr_confidence": 0.99,
+    "page_quality_flag": "OK"
+  }]
+}

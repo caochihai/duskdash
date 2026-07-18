@@ -1,0 +1,23 @@
+{
+  "case_id": "CASE-MISSING-001",
+  "customer_id": "CUS-MISSING-001",
+  "document_manifest": {
+    "total_documents": 1,
+    "total_pages": 2,
+    "documents": [{
+      "document_id": "DOC-MISSING",
+      "document_type": "BAO_CAO_TAI_CHINH",
+      "page_count": 2,
+      "sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+    }]
+  },
+  "ocr_pages": [{
+    "document_id": "DOC-MISSING",
+    "page_number": 1,
+    "ocr_text": "Chỉ có trang một.",
+    "ocr_tables": [],
+    "ocr_fields": {"_fixture_verified": true},
+    "ocr_confidence": 0.95,
+    "page_quality_flag": "OK"
+  }]
+}
