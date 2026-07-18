@@ -87,6 +87,7 @@ class ValidatedToken:
     expires_at: int
     token_id: str | None = None
     session_id: str | None = None
+    username: str | None = None
 
 
 class JWTValidator:
@@ -197,6 +198,9 @@ class JWTValidator:
             expires_at=expires_at,
             token_id=claims.get("jti") if isinstance(claims.get("jti"), str) else None,
             session_id=claims.get("sid") if isinstance(claims.get("sid"), str) else None,
+            username=claims.get("preferred_username")
+            if isinstance(claims.get("preferred_username"), str)
+            else None,
         )
 
     async def close(self) -> None:

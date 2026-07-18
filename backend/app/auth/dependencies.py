@@ -9,6 +9,7 @@ from fastapi import Depends, Request, Security
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from app.auth.jwt_validator import JWTValidator
+from app.auth.login_rules import LoginRuleEngine
 from app.auth.principal import CurrentPrincipal, PrincipalResolver, build_current_principal
 from app.exceptions import AuthenticationError, AuthorizationError, DependencyUnavailableError
 from app.logging import bind_contextvars
@@ -35,6 +36,15 @@ async def get_current_principal(
 
     principal_resolver: PrincipalResolver = resolver
     validated = await validator.validate(credentials.credentials)
+
+    login_rules = getattr(request.app.state, "login_rules", None)
+    if isinstance(login_rules, LoginRuleEngine):
+        verdict = login_rules.evaluate(
+            username=validated.username, roles=validated.realm_roles
+        )
+        if not verdict.allowed:
+            raise AuthenticationError("LOGIN_RULE_DENIED", verdict.reason)
+
     record = await principal_resolver.resolve(validated.subject)
     if record is None or record.status != "ACTIVE" or record.subject != validated.subject:
         raise AuthenticationError("EMPLOYEE_INACTIVE", "The employee account is not active.")

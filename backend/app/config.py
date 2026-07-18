@@ -40,6 +40,12 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000"]
     )
 
+    # Rule-based account gate (all optional; an empty value disables that rule).
+    login_rules_deny_usernames: str = ""
+    login_rules_allow_username_patterns: str = ""
+    login_rules_required_roles: str = ""
+    login_rules_access_window_utc: str = ""
+
     # PostgreSQL contract.
     database_host: str = "localhost"
     database_port: int = Field(default=5432, ge=1, le=65535)
