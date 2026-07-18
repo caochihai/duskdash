@@ -112,6 +112,7 @@ class Settings(BaseSettings):
     llm_api_url: str | None = None
     llm_api_key: SecretStr | None = None
     llm_model_name: str = "mock-model"
+    vision_model_name: str = "Qwen2.5-VL-7B-Instruct"
     embedding_provider: str = "mock"
     embedding_api_url: str | None = None
     embedding_api_key: SecretStr | None = None

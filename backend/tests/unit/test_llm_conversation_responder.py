@@ -74,6 +74,74 @@ async def test_llm_failure_returns_degraded_reply_instead_of_raising() -> None:
     assert reply.content
 
 
+def test_render_highlight_markdown_levels_and_links() -> None:
+    from app.services.document_highlight_service import (
+        AnnotatedImage,
+        HighlightResult,
+        HighlightSegment,
+        render_highlight_markdown,
+    )
+
+    result = HighlightResult(
+        document_summary="Giấy đăng ký kinh doanh công ty TNHH ABC.",
+        answer="Hồ sơ hợp lệ nhưng có một điểm lệch.",
+        segments=[
+            HighlightSegment(
+                document_index=0,
+                text="Số CCCD 001199001234",
+                level="critical",
+                reason="Khác với số CCCD trong hệ thống",
+                bbox_2d=[100, 200, 500, 260],
+            ),
+            HighlightSegment(
+                document_index=0,
+                text="Vốn điều lệ 5 tỷ đồng",
+                level="emphasis",
+                reason="Liên quan trực tiếp câu hỏi về hạn mức",
+            ),
+        ],
+    )
+    links = [AnnotatedImage(key="highlights/c/x-0.jpg", url="https://minio/presigned/x")]
+    content = render_highlight_markdown(result, links)
+    assert "🔴 **[CẢNH BÁO]**" in content
+    assert "🟡 **[NHẤN MẠNH]**" in content
+    assert "Khác với số CCCD" in content
+    assert "https://minio/presigned/x" in content
+
+
+@pytest.mark.asyncio
+async def test_attachments_without_db_fall_back_to_single_llm() -> None:
+    from app.services.document_highlight_service import DocumentHighlighter
+
+    class _NoCallVision:
+        provider = "stub"
+        model_name = "stub-vl"
+        model_version = "stub-vl"
+
+        async def generate_structured(self, **kwargs):
+            raise AssertionError("không được gọi vision khi chưa đọc được file")
+
+    class _NoCallStorage:
+        async def get_object(self, *a, **k):
+            raise AssertionError("DB factory=None thì không tới bước storage")
+
+    llm = _StubLLM()
+    responder = LLMConversationResponder(
+        llm,
+        highlighter=DocumentHighlighter(_NoCallVision(), None),
+        storage=_NoCallStorage(),
+    )
+    reply = await responder.respond(
+        principal=_principal(),
+        conversation={},
+        message="kiểm tra hồ sơ đính kèm",
+        route={"route_type": "DIRECT", "intent": "DIRECT_QUERY"},
+        attachment_ids=(uuid4(),),
+    )
+    assert llm.calls == 1
+    assert reply.metadata.get("attachments_used_for_llm_analysis") is False
+
+
 class _StubEngine:
     def __init__(self) -> None:
         self.case = {

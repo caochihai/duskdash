@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import re
+from collections.abc import Sequence
+from typing import Any
 
 import httpx
 from pydantic import ValidationError
@@ -56,6 +59,7 @@ class OpenAICompatLLMProvider:
         system_prompt: str,
         user_prompt: str,
         response_model: type[ModelT],
+        images: Sequence[bytes] = (),
     ) -> ModelT:
         schema = json.dumps(response_model.model_json_schema(), ensure_ascii=False)
         system = (
@@ -63,9 +67,20 @@ class OpenAICompatLLMProvider:
             "Trả lời DUY NHẤT một JSON hợp lệ theo đúng schema sau, "
             f"không kèm bất kỳ văn bản nào khác:\n{schema}"
         )
-        messages: list[dict[str, str]] = [
+        user_content: str | list[dict[str, Any]]
+        if images:
+            user_content = [{"type": "text", "text": user_prompt}]
+            for image in images:
+                media = "image/png" if image[:8].startswith(b"\x89PNG") else "image/jpeg"
+                encoded = base64.b64encode(image).decode()
+                user_content.append(
+                    {"type": "image_url", "image_url": {"url": f"data:{media};base64,{encoded}"}}
+                )
+        else:
+            user_content = user_prompt
+        messages: list[dict[str, Any]] = [
             {"role": "system", "content": system},
-            {"role": "user", "content": user_prompt},
+            {"role": "user", "content": user_content},
         ]
 
         last_error = "no attempt"

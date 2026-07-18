@@ -13,10 +13,17 @@ from app.db import session as db_session
 from app.db.rls_context import rls_transaction
 from app.logging import get_logger
 from app.providers.llm.base import LLMProvider
+from app.repositories.conversation_repository import ConversationRepository
 from app.repositories.customer_repository import CustomerRepository
+from app.repositories.document_repository import DocumentRepository
 from app.repositories.transaction_repository import TransactionRepository
 from app.schemas.conversation import ConversationReply
+from app.services.document_highlight_service import (
+    DocumentHighlighter,
+    render_highlight_markdown,
+)
 from app.services.protocols import PrincipalLike
+from app.storage.interface import Storage
 
 logger = get_logger(__name__)
 
@@ -134,12 +141,16 @@ class LLMConversationResponder:
         engine_business_id: str = "B001",
         engine_wait_seconds: int = 90,
         transaction_page_size: int = 15,
+        highlighter: DocumentHighlighter | None = None,
+        storage: Storage | None = None,
     ) -> None:
         self._llm = llm
         self._engine = engine
         self._engine_business_id = engine_business_id
         self._engine_wait_seconds = engine_wait_seconds
         self._transaction_page_size = transaction_page_size
+        self._highlighter = highlighter
+        self._storage = storage
 
     async def respond(
         self,
@@ -173,6 +184,20 @@ class LLMConversationResponder:
             )
 
         context = await self._collect_context(principal, conversation, route)
+
+        if attachment_ids and self._highlighter is not None:
+            highlight_reply = await self._respond_with_highlights(
+                principal=principal,
+                conversation=conversation,
+                message=message,
+                attachment_ids=attachment_ids,
+                context=context,
+                route_type=route_type,
+                complexity_level=complexity_level,
+                base_metadata=base_metadata,
+            )
+            if highlight_reply is not None:
+                return highlight_reply
 
         if route_type in _DEEP_ANALYSIS_ROUTES and self._engine is not None:
             engine_reply = await self._respond_with_engine(
@@ -214,6 +239,96 @@ class LLMConversationResponder:
                 **base_metadata,
                 "citations": answer.citations,
                 "data_sources": sorted(context.keys()),
+            },
+        )
+
+    async def _respond_with_highlights(
+        self,
+        *,
+        principal: PrincipalLike,
+        conversation: Mapping[str, Any],
+        message: str,
+        attachment_ids: Sequence[UUID],
+        context: Mapping[str, Any],
+        route_type: str,
+        complexity_level: int | None,
+        base_metadata: Mapping[str, Any],
+    ) -> ConversationReply | None:
+        """Đọc hồ sơ đính kèm bằng vision-LLM, trả bản highlight; None = rơi về LLM đơn."""
+        if self._storage is None or self._highlighter is None:
+            return None
+        factory = db_session.AsyncSessionFactory
+        if factory is None:
+            return None
+
+        images: list[bytes] = []
+        memory_lines: list[str] = []
+        try:
+            async with factory() as session, rls_transaction(
+                session,
+                employee_id=principal.employee_id,
+                branch_id=principal.branch_id,
+                is_admin=principal.is_admin,
+            ):
+                documents = DocumentRepository(session)
+                for attachment_id in tuple(attachment_ids)[:5]:
+                    versions = await documents.get_versions(attachment_id)
+                    if not versions:
+                        continue
+                    version = await documents.get_version(versions[0]["id"])
+                    if version is None:
+                        continue
+                    data = await self._storage.get_object(
+                        str(version["bucket_name"]), str(version["object_key"])
+                    )
+                    # Chỉ nhận ảnh (JPEG/PNG) — PDF cần pipeline worker xử lý riêng.
+                    if data[:3] == b"\xff\xd8\xff" or data[:8].startswith(b"\x89PNG"):
+                        images.append(data)
+
+                conversation_id = conversation.get("id")
+                if conversation_id is not None:
+                    rows = await ConversationRepository(session).messages(
+                        UUID(str(conversation_id)), employee_id=principal.employee_id
+                    )
+                    memory_lines = [
+                        f"{row.get('sender_type', '?')}: {str(row.get('content', ''))[:200]}"
+                        for row in rows[-8:]
+                    ]
+        except Exception:
+            logger.exception("HIGHLIGHT_ATTACHMENT_LOAD_FAILED")
+            return None
+
+        if not images:
+            return None
+
+        try:
+            result = await self._highlighter.analyze(
+                question=message,
+                customer_context=dict(context),
+                memory_lines=memory_lines,
+                images=images,
+            )
+            links = await self._highlighter.annotate_and_upload(
+                images=images,
+                result=result,
+                conversation_id=str(conversation.get("id", "conv")),
+            )
+        except Exception:
+            logger.exception("HIGHLIGHT_ANALYSIS_FAILED")
+            return None
+
+        return ConversationReply(
+            content=render_highlight_markdown(result, links),
+            route_type=route_type,
+            complexity_level=complexity_level,
+            metadata={
+                **base_metadata,
+                "responder": "llm",
+                "attachments_used_for_llm_analysis": True,
+                "highlight_model": self._highlighter.model_name,
+                "highlight_segments": [seg.model_dump() for seg in result.segments],
+                "annotated_images": [link.key for link in links],
+                "images_analyzed": len(images),
             },
         )
 
