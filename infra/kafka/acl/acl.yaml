@@ -1,0 +1,75 @@
+version: 1
+principals:
+  bank-api:
+    produce:
+      - bank.document.commands.v1
+      - bank.analysis.commands.v1
+      - bank.report.commands.v1
+    consume: []
+    groups: []
+  document-worker:
+    produce:
+      - bank.document.events.v1
+      - bank.notification.events.v1
+      - bank.job-status.v1
+      - bank.retry.1m.v1
+      - bank.retry.10m.v1
+      - bank.dead-letter.v1
+    consume:
+      - bank.document.commands.v1
+    groups:
+      - document-worker-group
+  analysis-orchestrator:
+    produce:
+      - bank.analysis.commands.v1
+      - bank.analysis.events.v1
+      - bank.notification.events.v1
+    consume:
+      - bank.analysis.commands.v1
+      - bank.document.events.v1
+    groups:
+      - analysis-orchestrator-group
+  credit-worker:
+    produce:
+      - bank.analysis.events.v1
+      - bank.notification.events.v1
+      - bank.dead-letter.v1
+    consume:
+      - bank.analysis.commands.v1
+    groups:
+      - credit-worker-group
+  compliance-worker:
+    produce:
+      - bank.analysis.events.v1
+      - bank.notification.events.v1
+      - bank.dead-letter.v1
+    consume:
+      - bank.analysis.commands.v1
+    groups:
+      - compliance-worker-group
+  report-worker:
+    produce:
+      - bank.report.events.v1
+      - bank.notification.events.v1
+    consume:
+      - bank.report.commands.v1
+      - bank.analysis.events.v1
+    groups:
+      - report-worker-group
+  notification-gateway:
+    produce: []
+    consume:
+      - bank.notification.events.v1
+      - bank.job-status.v1
+    groups:
+      - notification-gateway-group
+  audit-consumer:
+    produce: []
+    consume:
+      - bank.audit.events.v1
+      - bank.document.events.v1
+      - bank.analysis.events.v1
+      - bank.report.events.v1
+    groups:
+      - audit-consumer-group
+

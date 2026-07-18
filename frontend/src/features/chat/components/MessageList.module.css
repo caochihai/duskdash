@@ -1,0 +1,47 @@
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+.inner {
+  display: flex;
+  flex-direction: column;
+  gap: 26px;
+  width: 100%;
+  max-width: var(--shb-chat-max-width);
+  margin: 0 auto;
+  padding: 26px 24px 8px;
+}
+
+.skeletonBlock {
+  display: flex;
+  gap: 12px;
+}
+
+.skeletonBody {
+  flex: 1;
+  max-width: var(--shb-content-max-width);
+}
+
+.stateWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 260px;
+  padding: 24px;
+}
+
+/* Neo cuộn ở đáy danh sách. */
+.anchor {
+  height: 1px;
+}
+
+@media (max-width: 767px) {
+  .inner {
+    gap: 20px;
+    padding: 18px 14px 6px;
+  }
+}

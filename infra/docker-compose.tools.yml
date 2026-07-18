@@ -1,0 +1,45 @@
+services:
+  pgadmin:
+    image: ${PGADMIN_IMAGE:?Set PGADMIN_IMAGE via versions.env}
+    profiles: [tools]
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL:-admin@example.local}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD:?Generate .env.local}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "True"
+    ports:
+      - 127.0.0.1:5050:80
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - bank-data
+      - bank-edge
+    security_opt:
+      - no-new-privileges:true
+
+  kafka-ui:
+    image: ${KAFKA_UI_IMAGE:?Set KAFKA_UI_IMAGE via versions.env}
+    profiles: [tools]
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      KAFKA_CLUSTERS_0_NAME: bank-ai-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_PROPERTIES_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_MECHANISM: SCRAM-SHA-512
+      KAFKA_CLUSTERS_0_PROPERTIES_SASL_JAAS_CONFIG: >-
+        org.apache.kafka.common.security.scram.ScramLoginModule required
+        username="${KAFKA_ADMIN_USERNAME:-kafka-admin}"
+        password="${KAFKA_ADMIN_PASSWORD:?Generate .env.local}";
+      AUTH_TYPE: DISABLED
+    ports:
+      - 127.0.0.1:8085:8080
+    networks:
+      - bank-application
+      - bank-edge
+    security_opt:
+      - no-new-privileges:true
+

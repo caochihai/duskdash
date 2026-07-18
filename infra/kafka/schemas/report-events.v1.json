@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bank-ai.example.local/schemas/report-events.v1.json",
+  "title": "Bank AI report commands and events v1",
+  "allOf": [
+    {
+      "$ref": "event-envelope.v1.json"
+    },
+    {
+      "properties": {
+        "event_type": {
+          "enum": [
+            "report.generation.requested",
+            "report.pdf.requested",
+            "report.generation.started",
+            "report.generated",
+            "report.pdf.generated",
+            "report.generation.failed"
+          ]
+        },
+        "resource": {
+          "properties": {
+            "type": {
+              "const": "REPORT"
+            }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "schema": {
+              "pattern": "^report\\.[a-z0-9.-]+\\.v1$"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+

@@ -1,0 +1,40 @@
+.shell {
+  display: flex;
+  /* 100dvh: đúng chiều cao khả dụng trên mobile khi có thanh địa chỉ. */
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow: hidden;
+  background: var(--shb-canvas);
+}
+
+.sider {
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  /* Chỉ animate width -> không gây layout jump cho vùng chat. */
+  will-change: width;
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Vùng nội dung cuộn độc lập với header và composer. */
+.content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+@media (max-width: 767px) {
+  .sider {
+    display: none;
+  }
+}

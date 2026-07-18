@@ -1,0 +1,39 @@
+startDelaySeconds: 5
+lowercaseOutputName: true
+lowercaseOutputLabelNames: true
+rules:
+  - pattern: 'kafka.controller<type=KafkaController, name=ActiveControllerCount><>Value'
+    name: kafka_controller_active_controller_count
+    type: GAUGE
+  - pattern: 'kafka.server<type=ReplicaManager, name=(UnderReplicatedPartitions|OfflineReplicaCount|LeaderCount|PartitionCount)><>Value'
+    name: kafka_server_replica_manager_$1
+    type: GAUGE
+  - pattern: 'kafka.controller<type=KafkaController, name=OfflinePartitionsCount><>Value'
+    name: kafka_controller_offline_partitions_count
+    type: GAUGE
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(BytesInPerSec|BytesOutPerSec|MessagesInPerSec)><>Count'
+    name: kafka_server_broker_topic_$1_total
+    type: COUNTER
+  - pattern: 'kafka.server<type=BrokerTopicMetrics, name=(BytesInPerSec|BytesOutPerSec|MessagesInPerSec), topic=(.+)><>Count'
+    name: kafka_server_broker_topic_$1_total
+    labels:
+      topic: '$2'
+    type: COUNTER
+  - pattern: 'kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+)><>Count'
+    name: kafka_network_requests_total
+    labels:
+      request: '$1'
+    type: COUNTER
+  - pattern: 'kafka.network<type=RequestMetrics, name=TotalTimeMs, request=(.+)><>(Count|Mean|50thPercentile|95thPercentile|99thPercentile)'
+    name: kafka_network_request_total_time_ms
+    labels:
+      request: '$1'
+      statistic: '$2'
+    type: GAUGE
+  - pattern: 'kafka.network<type=SocketServer, name=NetworkProcessorAvgIdlePercent><>Value'
+    name: kafka_network_processor_idle_ratio
+    type: GAUGE
+  - pattern: 'kafka.server<type=KafkaServer, name=BrokerState><>Value'
+    name: kafka_server_broker_state
+    type: GAUGE
+

@@ -1,0 +1,62 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "BucketMetadataForAuthorizedStorage",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetBucketLocation",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::upload-quarantine",
+        "arn:aws:s3:::customer-doc-original",
+        "arn:aws:s3:::customer-doc-derived",
+        "arn:aws:s3:::policy-documents",
+        "arn:aws:s3:::generated-reports"
+      ]
+    },
+    {
+      "Sid": "QuarantineMultipartMetadata",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListBucketMultipartUploads"
+      ],
+      "Resource": "arn:aws:s3:::upload-quarantine"
+    },
+    {
+      "Sid": "CreatePresignedQuarantineUploads",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:AbortMultipartUpload",
+        "s3:ListMultipartUploadParts"
+      ],
+      "Resource": "arn:aws:s3:::upload-quarantine/uploads/*/incoming"
+    },
+    {
+      "Sid": "ReadAuthorizedObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:GetObjectVersion"
+      ],
+      "Resource": [
+        "arn:aws:s3:::customer-doc-original/documents/*",
+        "arn:aws:s3:::customer-doc-derived/documents/*",
+        "arn:aws:s3:::policy-documents/policies/*",
+        "arn:aws:s3:::generated-reports/analysis-cases/*"
+      ]
+    },
+    {
+      "Sid": "MarkDerivedObjectsEligibleAfterRetentionCheck",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObjectTagging",
+        "s3:PutObjectTagging"
+      ],
+      "Resource": "arn:aws:s3:::customer-doc-derived/documents/*"
+    }
+  ]
+}

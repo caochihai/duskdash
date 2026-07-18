@@ -1,0 +1,170 @@
+.row {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--shb-orange-50);
+  border: 1px solid var(--shb-orange-100);
+  color: var(--shb-orange-500);
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  /* Độ rộng đọc tối ưu cho văn bản dài. */
+  max-width: var(--shb-content-max-width);
+  flex: 1;
+}
+
+.name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--shb-navy-700);
+  line-height: 1;
+}
+
+/* Nội dung AI không bị nhốt trong bubble trắng nặng nề. */
+.blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tableBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.blockTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 620;
+  color: var(--shb-navy-700);
+}
+
+.blockDescription {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--shb-text-secondary);
+}
+
+.footnote {
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--shb-text-muted);
+}
+
+.chartBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-card);
+  background: var(--shb-surface);
+}
+
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.disclaimer {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 11px 14px;
+  border-radius: var(--shb-radius-md);
+  background: var(--shb-canvas);
+  border: 1px solid var(--shb-border);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--shb-text-secondary);
+}
+
+.disclaimerIcon {
+  color: var(--shb-text-muted);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+/* Con trỏ nhấp nháy khi đang stream. */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: text-bottom;
+  background: var(--shb-orange-500);
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.streamingText {
+  font-size: 15.5px;
+  line-height: 1.72;
+  color: var(--shb-text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  /* Action chỉ nổi rõ khi hover/focus, tránh gây nhiễu khi đọc. */
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+
+.row:hover .actions,
+.row:focus-within .actions {
+  opacity: 1;
+}
+
+.stoppedNote {
+  font-size: 12.5px;
+  color: var(--shb-text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 767px) {
+  .row {
+    gap: 9px;
+  }
+
+  /* Mobile không có hover -> action luôn truy cập được. */
+  .actions {
+    opacity: 1;
+  }
+
+  .chartBlock {
+    padding: 12px;
+  }
+}

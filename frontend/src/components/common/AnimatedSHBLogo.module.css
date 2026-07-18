@@ -1,0 +1,31 @@
+.wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  /* Container có thể animate; bản thân logo thì không. */
+  isolation: isolate;
+}
+
+/* Glow cam phía sau logo — là phần tử riêng, không chạm vào logo. */
+.glow {
+  position: absolute;
+  inset: -40% -22%;
+  z-index: -1;
+  border-radius: var(--shb-radius-pill);
+  background: radial-gradient(
+    ellipse at center,
+    rgba(243, 112, 33, 0.22) 0%,
+    rgba(243, 112, 33, 0.08) 42%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+.glowSubtle {
+  background: radial-gradient(
+    ellipse at center,
+    rgba(243, 112, 33, 0.14) 0%,
+    transparent 65%
+  );
+}

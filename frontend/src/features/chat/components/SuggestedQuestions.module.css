@@ -1,0 +1,55 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.label {
+  font-size: 12.5px;
+  color: var(--shb-text-muted);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 6px 14px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-pill);
+  background: var(--shb-surface);
+  color: var(--shb-navy-700);
+  font-size: 13.5px;
+  line-height: 1.45;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    transform 160ms ease;
+}
+
+.chip:hover {
+  border-color: var(--shb-orange-300);
+  background: var(--shb-orange-50);
+  transform: translateY(-1px);
+}
+
+.chip:active {
+  transform: scale(0.98);
+}
+
+.chip:focus-visible {
+  outline: 3px solid var(--shb-orange-500);
+  outline-offset: 2px;
+}
+
+@media (max-width: 767px) {
+  .chip {
+    /* Touch target đủ lớn trên mobile. */
+    min-height: 38px;
+  }
+}

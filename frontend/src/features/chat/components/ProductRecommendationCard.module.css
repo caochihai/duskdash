@@ -1,0 +1,73 @@
+.card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px 18px 18px 21px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-card);
+  background: var(--shb-surface);
+  box-shadow: var(--shb-shadow-sm);
+}
+
+/* Dải cam mảnh bên trái — dấu hiệu thương hiệu, không phải banner. */
+.accent {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--shb-orange-400), var(--shb-orange-500));
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.35;
+  color: var(--shb-navy-700);
+}
+
+.description {
+  margin: 0 0 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--shb-text-secondary);
+}
+
+.benefits {
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.benefit {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--shb-text-primary);
+}
+
+.benefitIcon {
+  color: var(--shb-success);
+  font-size: 13px;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

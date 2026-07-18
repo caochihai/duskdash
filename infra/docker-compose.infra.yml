@@ -1,0 +1,375 @@
+name: ${COMPOSE_PROJECT_NAME:-bank-ai-workbench}
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE via versions.env}
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER:?Set POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?Generate .env.local}
+      POSTGRES_DB: postgres
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256 --auth-local=trust --data-checksums
+      POSTGRES_SUPERUSER: ${POSTGRES_SUPERUSER:?Set POSTGRES_SUPERUSER}
+      POSTGRES_SUPERUSER_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD:?Generate .env.local}
+      POSTGRES_MIGRATOR_USER: ${POSTGRES_MIGRATOR_USER:-bank_migrator}
+      POSTGRES_MIGRATOR_PASSWORD: ${POSTGRES_MIGRATOR_PASSWORD:?Generate .env.local}
+      POSTGRES_APP_USER: ${POSTGRES_APP_USER:-bank_app}
+      POSTGRES_APP_PASSWORD: ${POSTGRES_APP_PASSWORD:?Generate .env.local}
+      POSTGRES_WORKER_USER: ${POSTGRES_WORKER_USER:-bank_worker}
+      POSTGRES_WORKER_PASSWORD: ${POSTGRES_WORKER_PASSWORD:?Generate .env.local}
+      POSTGRES_READONLY_USER: ${POSTGRES_READONLY_USER:-bank_readonly}
+      POSTGRES_READONLY_PASSWORD: ${POSTGRES_READONLY_PASSWORD:?Generate .env.local}
+      KEYCLOAK_DB_USER: ${KEYCLOAK_DB_USER:-keycloak_app}
+      KEYCLOAK_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Generate .env.local}
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - hba_file=/etc/postgresql/pg_hba.conf
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/pg_hba.conf:/etc/postgresql/pg_hba.conf:ro
+      - ./database/bootstrap:/docker-entrypoint-initdb.d:ro
+    networks:
+      - bank-data
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          PGPASSWORD="$$POSTGRES_SUPERUSER_PASSWORD" psql -h 127.0.0.1
+          -U "$$POSTGRES_SUPERUSER" -d postgres -v ON_ERROR_STOP=1
+          -Atqc "SELECT 1" | grep -qx 1
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  flyway:
+    image: ${FLYWAY_IMAGE:?Set FLYWAY_IMAGE via versions.env}
+    profiles: [setup]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      FLYWAY_URL: jdbc:postgresql://postgres:5432/bank_ai
+      FLYWAY_USER: ${POSTGRES_MIGRATOR_USER:-bank_migrator}
+      FLYWAY_PASSWORD: ${POSTGRES_MIGRATOR_PASSWORD:?Generate .env.local}
+      FLYWAY_CONNECT_RETRIES: 60
+      FLYWAY_VALIDATE_MIGRATION_NAMING: "true"
+      FLYWAY_CLEAN_DISABLED: "true"
+      FLYWAY_DEFAULT_SCHEMA: public
+    command: migrate
+    volumes:
+      - ./database/migrations:/flyway/sql:ro
+    networks:
+      - bank-data
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  db-seed:
+    image: ${POSTGRES_IMAGE:?Set POSTGRES_IMAGE via versions.env}
+    profiles: [setup]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: bank_ai
+      PGUSER: ${POSTGRES_MIGRATOR_USER:-bank_migrator}
+      PGPASSWORD: ${POSTGRES_MIGRATOR_PASSWORD:?Generate .env.local}
+    entrypoint: [/bin/bash, /opt/bank/seeds/run-seeds.sh]
+    volumes:
+      - ./database/seeds:/opt/bank/seeds:ro
+    networks:
+      - bank-data
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  redis:
+    image: ${REDIS_IMAGE:?Set REDIS_IMAGE via versions.env}
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Generate .env.local}
+    command:
+      - /bin/sh
+      - -ec
+      - exec redis-server /usr/local/etc/redis/redis.conf --requirepass "$${REDIS_PASSWORD}"
+    ports:
+      - 127.0.0.1:6379:6379
+    volumes:
+      - redis_data:/data
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    networks:
+      - bank-application
+    healthcheck:
+      test: [CMD-SHELL, 'redis-cli --no-auth-warning -a "$$REDIS_PASSWORD" PING | grep -qx PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  kafka:
+    image: ${KAFKA_RUNTIME_IMAGE:?Set KAFKA_RUNTIME_IMAGE via versions.env}
+    build:
+      context: .
+      dockerfile: kafka/Dockerfile
+      args:
+        KAFKA_IMAGE: ${KAFKA_IMAGE:?Set KAFKA_IMAGE via versions.env}
+        JMX_EXPORTER_VERSION: ${JMX_EXPORTER_VERSION:?Set JMX_EXPORTER_VERSION via versions.env}
+        JMX_EXPORTER_SHA256: 0315f3f657876302c6205a98d4036ec775dca529c5d0419ca60ee669c688239f
+    restart: unless-stopped
+    environment: &kafka-environment
+      TZ: ${TZ:-UTC}
+      KAFKA_CLUSTER_ID: ${KAFKA_CLUSTER_ID:?Generate .env.local}
+      KAFKA_ADMIN_USERNAME: ${KAFKA_ADMIN_USERNAME:-kafka-admin}
+      KAFKA_ADMIN_PASSWORD: ${KAFKA_ADMIN_PASSWORD:?Generate .env.local}
+      KAFKA_BANK_API_USERNAME: ${KAFKA_BANK_API_USERNAME:-bank-api}
+      KAFKA_BANK_API_PASSWORD: ${KAFKA_BANK_API_PASSWORD:?Generate .env.local}
+      KAFKA_DOCUMENT_WORKER_USERNAME: ${KAFKA_DOCUMENT_WORKER_USERNAME:-document-worker}
+      KAFKA_DOCUMENT_WORKER_PASSWORD: ${KAFKA_DOCUMENT_WORKER_PASSWORD:?Generate .env.local}
+      KAFKA_ANALYSIS_ORCHESTRATOR_USERNAME: ${KAFKA_ANALYSIS_ORCHESTRATOR_USERNAME:-analysis-orchestrator}
+      KAFKA_ANALYSIS_ORCHESTRATOR_PASSWORD: ${KAFKA_ANALYSIS_ORCHESTRATOR_PASSWORD:?Generate .env.local}
+      KAFKA_CREDIT_WORKER_USERNAME: ${KAFKA_CREDIT_WORKER_USERNAME:-credit-worker}
+      KAFKA_CREDIT_WORKER_PASSWORD: ${KAFKA_CREDIT_WORKER_PASSWORD:?Generate .env.local}
+      KAFKA_COMPLIANCE_WORKER_USERNAME: ${KAFKA_COMPLIANCE_WORKER_USERNAME:-compliance-worker}
+      KAFKA_COMPLIANCE_WORKER_PASSWORD: ${KAFKA_COMPLIANCE_WORKER_PASSWORD:?Generate .env.local}
+      KAFKA_REPORT_WORKER_USERNAME: ${KAFKA_REPORT_WORKER_USERNAME:-report-worker}
+      KAFKA_REPORT_WORKER_PASSWORD: ${KAFKA_REPORT_WORKER_PASSWORD:?Generate .env.local}
+      KAFKA_NOTIFICATION_GATEWAY_USERNAME: ${KAFKA_NOTIFICATION_GATEWAY_USERNAME:-notification-gateway}
+      KAFKA_NOTIFICATION_GATEWAY_PASSWORD: ${KAFKA_NOTIFICATION_GATEWAY_PASSWORD:?Generate .env.local}
+      KAFKA_AUDIT_CONSUMER_USERNAME: ${KAFKA_AUDIT_CONSUMER_USERNAME:-audit-consumer}
+      KAFKA_AUDIT_CONSUMER_PASSWORD: ${KAFKA_AUDIT_CONSUMER_PASSWORD:?Generate .env.local}
+      KAFKA_OPTS: -javaagent:/opt/bank/jmx/jmx_prometheus_javaagent.jar=7071:/opt/bank/kafka/config/jmx-exporter.yml
+    entrypoint: [/bin/bash, /opt/bank/kafka/scripts/start-kafka.sh]
+    ports:
+      - 127.0.0.1:29092:29092
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+      - ./kafka:/opt/bank/kafka:ro
+    networks:
+      - bank-application
+      - bank-edge
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          unset KAFKA_OPTS && /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
+          --command-config /tmp/bank-kafka/admin.properties >/dev/null 2>&1
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 40s
+    security_opt:
+      - no-new-privileges:true
+
+  kafka-init:
+    image: ${KAFKA_IMAGE:?Set KAFKA_IMAGE via versions.env}
+    profiles: [setup]
+    depends_on:
+      kafka:
+        condition: service_healthy
+    environment:
+      <<: *kafka-environment
+      KAFKA_OPTS: ""
+    entrypoint: [/bin/bash, /opt/bank/kafka/scripts/bootstrap.sh]
+    volumes:
+      - ./kafka:/opt/bank/kafka:ro
+    networks:
+      - bank-application
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  minio:
+    image: ${MINIO_IMAGE:?Set MINIO_IMAGE via versions.env}
+    restart: unless-stopped
+    environment:
+      TZ: ${TZ:-UTC}
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio-root-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Generate .env.local}
+      MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
+      MINIO_PROMETHEUS_AUTH_TYPE: public
+      # Community MinIO supports CORS at server level; per-bucket CORS is an
+      # AIStor-only API in the pinned release.
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000
+      # The S3 AbortIncompleteMultipartUpload lifecycle action is unsupported
+      # by MinIO; use its server-wide stale multipart cleanup instead.
+      MINIO_API_STALE_UPLOADS_EXPIRY: 24h
+      MINIO_API_STALE_UPLOADS_CLEANUP_INTERVAL: 6h
+    command: server /data --console-address :9001
+    ports:
+      - 127.0.0.1:9000:9000
+      - 127.0.0.1:9001:9001
+    volumes:
+      - minio_data:/data
+    networks:
+      - bank-application
+      - bank-edge
+    healthcheck:
+      test: [CMD-SHELL, 'curl --fail --silent http://127.0.0.1:9000/minio/health/live >/dev/null']
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  minio-init:
+    image: ${MINIO_INIT_IMAGE:?Set MINIO_INIT_IMAGE via versions.env}
+    build:
+      context: .
+      dockerfile: minio/Dockerfile
+      args:
+        MINIO_MC_IMAGE: ${MINIO_MC_IMAGE:?Set MINIO_MC_IMAGE via versions.env}
+        CURL_IMAGE: ${CURL_IMAGE:?Set CURL_IMAGE via versions.env}
+    profiles: [setup]
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment: &minio-bootstrap-environment
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio-root-admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Generate .env.local}
+      MINIO_BANK_API_ACCESS_KEY: ${MINIO_BANK_API_ACCESS_KEY:-bank-api}
+      MINIO_BANK_API_SECRET_KEY: ${MINIO_BANK_API_SECRET_KEY:?Generate .env.local}
+      MINIO_DOCUMENT_WORKER_ACCESS_KEY: ${MINIO_DOCUMENT_WORKER_ACCESS_KEY:-document-worker}
+      MINIO_DOCUMENT_WORKER_SECRET_KEY: ${MINIO_DOCUMENT_WORKER_SECRET_KEY:?Generate .env.local}
+      MINIO_POLICY_WORKER_ACCESS_KEY: ${MINIO_POLICY_WORKER_ACCESS_KEY:-policy-worker}
+      MINIO_POLICY_WORKER_SECRET_KEY: ${MINIO_POLICY_WORKER_SECRET_KEY:?Generate .env.local}
+      MINIO_REPORT_WORKER_ACCESS_KEY: ${MINIO_REPORT_WORKER_ACCESS_KEY:-report-worker}
+      MINIO_REPORT_WORKER_SECRET_KEY: ${MINIO_REPORT_WORKER_SECRET_KEY:?Generate .env.local}
+      MINIO_AUDIT_WRITER_ACCESS_KEY: ${MINIO_AUDIT_WRITER_ACCESS_KEY:-audit-writer}
+      MINIO_AUDIT_WRITER_SECRET_KEY: ${MINIO_AUDIT_WRITER_SECRET_KEY:?Generate .env.local}
+      MINIO_DERIVED_RETENTION_DAYS: ${MINIO_DERIVED_RETENTION_DAYS:-90}
+      MINIO_EXPECTED_CORS_ALLOW_ORIGIN: http://localhost:3000
+      MINIO_EXPECTED_STALE_UPLOADS_EXPIRY: 24h
+    entrypoint: [/bin/sh, /opt/bank/minio/bootstrap.sh]
+    volumes:
+      - ./minio:/opt/bank/minio:ro
+    networks:
+      - bank-application
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  keycloak:
+    image: ${KEYCLOAK_IMAGE:?Set KEYCLOAK_IMAGE via versions.env}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      TZ: ${TZ:-UTC}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER:-keycloak_app}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Generate .env.local}
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Generate .env.local}
+      KC_HEALTH_ENABLED: "true"
+      KC_METRICS_ENABLED: "true"
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_LOG_CONSOLE_OUTPUT: json
+    command: start-dev --import-realm
+    ports:
+      - 127.0.0.1:8080:8080
+    volumes:
+      - keycloak_data:/opt/keycloak/data
+      - ./keycloak/realm-bank-ai.json:/opt/keycloak/data/import/realm-bank-ai.json:ro
+    networks:
+      - bank-application
+      - bank-data
+      - bank-edge
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bash -ec 'exec 3<>/dev/tcp/127.0.0.1/9000;
+          printf "GET /health/ready HTTP/1.0\r\n\r\n" >&3;
+          grep -q "200 OK" <&3'
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    security_opt:
+      - no-new-privileges:true
+
+  keycloak-init:
+    image: ${KEYCLOAK_IMAGE:?Set KEYCLOAK_IMAGE via versions.env}
+    profiles: [setup]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Generate .env.local}
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET:?Generate .env.local}
+      KEYCLOAK_WORKER_CLIENT_SECRET: ${KEYCLOAK_WORKER_CLIENT_SECRET:?Generate .env.local}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:?Generate .env.local}
+    entrypoint: [/bin/bash, /opt/bank/keycloak/bootstrap-users.sh]
+    volumes:
+      - ./keycloak:/opt/bank/keycloak:ro
+    networks:
+      - bank-application
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+  keycloak-smoke:
+    image: ${CURL_IMAGE:?Set CURL_IMAGE via versions.env}
+    profiles: [setup]
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: bank-ai
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Generate .env.local}
+      KEYCLOAK_BACKEND_CLIENT_SECRET: ${KEYCLOAK_BACKEND_CLIENT_SECRET:?Generate .env.local}
+      SEED_USER_PASSWORD: ${SEED_USER_PASSWORD:?Generate .env.local}
+    entrypoint: [/bin/sh, /opt/bank/keycloak/smoke-test.sh]
+    volumes:
+      - ./keycloak:/opt/bank/keycloak:ro
+    networks:
+      - bank-application
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  bank-edge:
+    driver: bridge
+  bank-application:
+    driver: bridge
+    internal: true
+  bank-data:
+    driver: bridge
+    internal: true
+
+volumes:
+  postgres_data:
+  redis_data:
+  kafka_data:
+  minio_data:
+  keycloak_data:
+  pgadmin_data:
+  prometheus_data:
+  grafana_data:
