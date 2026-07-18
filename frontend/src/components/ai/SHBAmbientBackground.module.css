@@ -1,0 +1,69 @@
+/*
+ * Nền trang trí cho Welcome State.
+ * Toàn bộ lớp này là decorative: pointer-events none + aria-hidden.
+ */
+.background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 82% 18%, rgba(243, 112, 33, 0.15), transparent 32%),
+    radial-gradient(circle at 12% 76%, rgba(47, 46, 121, 0.07), transparent 28%),
+    linear-gradient(180deg, var(--shb-warm-white) 0%, var(--shb-canvas) 100%);
+}
+
+/* Quầng sáng cam mềm, không viền, không neon. */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(46px);
+  opacity: 0.55;
+}
+
+.orbOne {
+  top: -12%;
+  right: -6%;
+  width: 380px;
+  height: 380px;
+  background: radial-gradient(circle, rgba(243, 112, 33, 0.24), transparent 68%);
+}
+
+.orbTwo {
+  bottom: -18%;
+  left: -8%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(47, 46, 121, 0.14), transparent 70%);
+}
+
+/* Đường cong mảnh gợi ý chuyển động "đồng hành", rất nhạt. */
+.curve {
+  position: absolute;
+  top: 8%;
+  right: -4%;
+  width: 46%;
+  height: auto;
+  opacity: 0.5;
+}
+
+@media (max-width: 767px) {
+  /* Giảm tải trên mobile: bỏ blur nặng và các orb. */
+  .orb,
+  .curve {
+    display: none;
+  }
+
+  .background {
+    background:
+      radial-gradient(circle at 88% 10%, rgba(243, 112, 33, 0.12), transparent 38%),
+      linear-gradient(180deg, var(--shb-warm-white) 0%, var(--shb-canvas) 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .orb {
+    animation: none;
+  }
+}

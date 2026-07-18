@@ -1,0 +1,13 @@
+{
+  // Dùng TypeScript của workspace (5.9.3) thay vì bản đóng gói sẵn trong VSCode.
+  // Bản cũ hơn không biết các option mới như `erasableSyntaxOnly` (TS 5.8+)
+  // hay `noUncheckedSideEffectImports` (TS 5.6+) -> gạch đỏ nhầm trong tsconfig.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Ưu tiên import dạng '@/...' theo alias đã cấu hình trong tsconfig + vite.
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+
+  "editor.formatOnSave": false,
+  "files.eol": "\n"
+}

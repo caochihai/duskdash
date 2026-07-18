@@ -1,0 +1,107 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  padding: 18px;
+  text-align: left;
+  background: var(--shb-surface);
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-lg);
+  box-shadow: var(--shb-shadow-sm);
+  cursor: pointer;
+  /* Hover/focus đơn giản -> CSS transition, không dùng Motion. */
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    border-color 180ms ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--shb-orange-200);
+  box-shadow: var(--shb-shadow-md);
+}
+
+.card:active {
+  transform: scale(0.98);
+  transition-duration: 90ms;
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--shb-orange-500);
+  outline-offset: 2px;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Badge số liệu (ví dụ "3" hồ sơ chờ duyệt). */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--shb-radius-pill);
+  background: var(--shb-orange-500);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--shb-radius-md);
+  background: var(--shb-orange-50);
+  color: var(--shb-orange-500);
+  font-size: 17px;
+  flex-shrink: 0;
+  transition:
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.card:hover .iconWrap {
+  background: var(--shb-orange-100);
+  transform: rotate(-3deg);
+}
+
+.title {
+  font-size: 14.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--shb-navy-700);
+}
+
+.description {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--shb-text-secondary);
+}
+
+@media (max-width: 767px) {
+  .card {
+    padding: 14px;
+  }
+
+  .iconWrap {
+    width: 34px;
+    height: 34px;
+    font-size: 16px;
+  }
+}

@@ -1,0 +1,90 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100%;
+  padding: 48px 24px 32px;
+}
+
+.inner {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: var(--shb-chat-max-width);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.logoBlock {
+  margin-bottom: 26px;
+}
+
+/* h1 duy nhất của màn hình chat. */
+.heading {
+  margin: 0 0 12px;
+  font-size: 40px;
+  font-weight: 680;
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  color: var(--shb-navy-800);
+}
+
+/* Chỉ tô cam cụm "SH-AI" — điểm nhấn, không lạm dụng. */
+.headingAccent {
+  color: var(--shb-orange-500);
+}
+
+.description {
+  margin: 0 auto 34px;
+  max-width: 560px;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--shb-text-secondary);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+@media (max-width: 1199px) {
+  .heading {
+    font-size: 34px;
+  }
+
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .wrapper {
+    padding: 28px 16px 20px;
+    justify-content: flex-start;
+  }
+
+  .heading {
+    font-size: 29px;
+  }
+
+  .description {
+    font-size: 15px;
+    margin-bottom: 24px;
+  }
+
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .logoBlock {
+    margin-bottom: 18px;
+  }
+}
