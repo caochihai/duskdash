@@ -1,0 +1,82 @@
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.sample
+
+# Secrets
+secrets/*
+!secrets/README.md
+!secrets/*.example
+!secrets/*.sample
+
+# Logs
+*.log
+logs/
+
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Frontend builds
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.nuxt/
+frontend/.vite/
+
+# Python backend
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+backend/.venv/
+backend/venv/
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+frontend/coverage/
+backend/coverage/
+
+# Package manager caches
+.npm/
+.pnpm-store/
+.yarn/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Terraform and infra
+**/.terraform/
+**/.terragrunt-cache/
+*.tfstate
+*.tfstate.*
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+*.tfplan
+*.plan
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+terraform.rc
+.terraformrc
+
+# Docker and local runtime
+*.pid
+tmp/
+temp/

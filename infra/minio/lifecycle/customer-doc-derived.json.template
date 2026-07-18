@@ -1,0 +1,21 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-derived-after-configured-retention",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "Expiration": {
+        "Days": __RETENTION_DAYS__
+      },
+      "NoncurrentVersionExpiration": {
+        "NoncurrentDays": __RETENTION_DAYS__
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+      }
+    }
+  ]
+}
+

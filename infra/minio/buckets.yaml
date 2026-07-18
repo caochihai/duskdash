@@ -1,0 +1,27 @@
+version: 1
+buckets:
+  - name: upload-quarantine
+    versioning: false
+    object_lock: false
+    lifecycle: lifecycle/upload-quarantine.json
+  - name: customer-doc-original
+    versioning: true
+    object_lock: false
+    lifecycle: null
+  - name: customer-doc-derived
+    versioning: true
+    object_lock: true
+    lifecycle: lifecycle/customer-doc-derived.json.template
+  - name: policy-documents
+    versioning: true
+    object_lock: false
+    lifecycle: null
+  - name: generated-reports
+    versioning: true
+    object_lock: false
+    lifecycle: null
+  - name: audit-archive
+    versioning: true
+    object_lock: true
+    lifecycle: null
+

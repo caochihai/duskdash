@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bank-ai.example.local/schemas/notification-events.v1.json",
+  "title": "Bank AI notification events v1",
+  "allOf": [
+    {
+      "$ref": "event-envelope.v1.json"
+    },
+    {
+      "properties": {
+        "event_type": {
+          "enum": [
+            "job.progress.updated",
+            "job.completed",
+            "job.failed",
+            "notification.created"
+          ]
+        },
+        "resource": {
+          "properties": {
+            "type": {
+              "enum": [
+                "BACKGROUND_JOB",
+                "NOTIFICATION",
+                "EMPLOYEE"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "schema": {
+              "pattern": "^(job|notification)\\.[a-z0-9.-]+\\.v1$"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+

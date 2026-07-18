@@ -1,0 +1,253 @@
+{
+  "realm": "bank-ai",
+  "displayName": "AI Credit Intelligence Workbench",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": false,
+  "rememberMe": false,
+  "verifyEmail": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "defaultSignatureAlgorithm": "RS256",
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "eventsEnabled": true,
+  "eventsExpiration": 604800,
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": false,
+  "roles": {
+    "realm": [
+      {
+        "name": "credit_officer",
+        "description": "Review customer and credit application information",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "credit_manager",
+        "description": "Manage credit review work",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "document_reviewer",
+        "description": "Review documents and extracted data",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "compliance_officer",
+        "description": "Review compliance findings",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "risk_officer",
+        "description": "Review risk findings",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "loan_approver",
+        "description": "Record authorized final loan decisions",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "auditor",
+        "description": "Read audit information",
+        "composite": false,
+        "clientRole": false
+      },
+      {
+        "name": "admin",
+        "description": "Administer the local Bank AI environment",
+        "composite": false,
+        "clientRole": false
+      }
+    ]
+  },
+  "clients": [
+    {
+      "id": "20000000-0000-4000-8000-000000000001",
+      "clientId": "bank-ai-frontend",
+      "name": "Bank AI Frontend",
+      "description": "Public browser client using Authorization Code and PKCE",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "frontchannelLogout": true,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "post.logout.redirect.uris": "http://localhost:3000/*"
+      },
+      "fullScopeAllowed": true
+    },
+    {
+      "id": "20000000-0000-4000-8000-000000000002",
+      "clientId": "bank-ai-backend",
+      "name": "Bank AI Backend",
+      "description": "Confidential API client and local demo-token test client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "bank-ai-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "bank-ai-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "id": "20000000-0000-4000-8000-000000000003",
+      "clientId": "bank-ai-worker",
+      "name": "Bank AI Worker",
+      "description": "Confidential worker service-account client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "publicClient": false,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "frontchannelLogout": false,
+      "protocol": "openid-connect",
+      "fullScopeAllowed": true,
+      "protocolMappers": [
+        {
+          "name": "bank-ai-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.custom.audience": "bank-ai-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "id": "10000000-0000-4000-8000-000000000001",
+      "username": "credit.officer@example.local",
+      "email": "credit.officer@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "credit_officer"
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000002",
+      "username": "credit.manager@example.local",
+      "email": "credit.manager@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "credit_manager"
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000003",
+      "username": "document.reviewer@example.local",
+      "email": "document.reviewer@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "document_reviewer"
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000004",
+      "username": "compliance@example.local",
+      "email": "compliance@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "compliance_officer"
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000005",
+      "username": "approver@example.local",
+      "email": "approver@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "loan_approver"
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000006",
+      "username": "auditor@example.local",
+      "email": "auditor@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "auditor"
+      ]
+    },
+    {
+      "id": "10000000-0000-4000-8000-000000000007",
+      "username": "admin@example.local",
+      "email": "admin@example.local",
+      "emailVerified": true,
+      "enabled": true,
+      "realmRoles": [
+        "admin"
+      ]
+    }
+  ]
+}
+
