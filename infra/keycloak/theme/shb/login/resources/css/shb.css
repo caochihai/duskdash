@@ -7,19 +7,18 @@
   --pf-v5-global--link--Color: #B9450C;
   --pf-v5-global--link--Color--hover: #93370D;
   --pf-v5-global--FontFamily--text: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+  /* Keycloak vẽ nền trang từ biến này (mặc định là ảnh polygon tối)
+     và thanh màu trên card từ --keycloak-card-top-color. */
+  --keycloak-bg-logo-url: linear-gradient(165deg, #fffdf9 0%, #f7f5f1 100%);
+  --keycloak-card-top-color: #F37021;
 }
 
-/* Nền: gradient ấm SHB thay ảnh nền mặc định của Keycloak. */
-.pf-v5-c-background-image {
+/* Nền: gradient ấm SHB thay ảnh polygon tối mặc định (.login-pf body). */
+.login-pf body {
   background:
     radial-gradient(80rem 40rem at 85% -10%, #feebdd 0%, rgba(254, 235, 221, 0) 60%),
     radial-gradient(60rem 30rem at 0% 110%, #fdd3b5 0%, rgba(253, 211, 181, 0) 55%),
-    linear-gradient(165deg, #fffdf9 0%, #f7f5f1 100%);
-}
-
-.pf-v5-c-background-image::before,
-.pf-v5-c-background-image::after {
-  display: none;
+    linear-gradient(165deg, #fffdf9 0%, #f7f5f1 100%) fixed !important;
 }
 
 /* Header: logo SHB + tên hệ thống màu indigo thương hiệu. */
@@ -44,11 +43,12 @@
   letter-spacing: 0.06em;
 }
 
-/* Card đăng nhập: trắng, bo góc, viền cam trên đỉnh như card trong app. */
+/* Card đăng nhập: trắng, bo góc; thanh cam trên đỉnh đã do
+   --keycloak-card-top-color đảm nhận (tránh hai thanh chồng nhau). */
 .pf-v5-c-login__main {
   background: #ffffff;
   border-radius: 16px;
-  border-top: 4px solid #f37021;
+  overflow: hidden;
   box-shadow: 0 24px 48px -12px rgba(24, 33, 43, 0.18);
   color: #18212b;
 }
