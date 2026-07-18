@@ -5,10 +5,12 @@ from __future__ import annotations
 import builtins
 from uuid import UUID, uuid4
 
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories.base import (
     Record,
+    database_params,
     execute_returning,
     fetch_all,
     fetch_one,
@@ -65,9 +67,9 @@ class CustomerRepository:
         # hàm STABLE nên không thấy row đang chèn trong cùng câu lệnh — RETURNING
         # sẽ luôn bị RLS chặn. SELECT lại bằng câu lệnh riêng thì qua bình thường
         # (nhân viên là relationship manager + cùng chi nhánh).
-        await fetch_one(
-            self.session,
-            """
+        await self.session.execute(
+            text(
+                """
             INSERT INTO customer.customer (
                 id, party_id, customer_number, customer_segment, home_branch_id,
                 relationship_manager_id, onboarding_date, kyc_status, risk_rating,
@@ -77,14 +79,17 @@ class CustomerRepository:
                 :employee_id, CURRENT_DATE, 'PENDING', 'UNRATED',
                 CURRENT_DATE, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1
             )
-            """,
-            {
-                "customer_id": customer_id,
-                "party_id": party_id,
-                "cif": cif,
-                "branch_id": branch_id,
-                "employee_id": employee_id,
-            },
+            """
+            ),
+            database_params(
+                {
+                    "customer_id": customer_id,
+                    "party_id": party_id,
+                    "cif": cif,
+                    "branch_id": branch_id,
+                    "employee_id": employee_id,
+                }
+            ),
         )
         row = await self.get(customer_id)
         if row is None:
