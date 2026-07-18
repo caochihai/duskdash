@@ -1,0 +1,17 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-derived-after-configured-retention",
+      "Status": "Enabled",
+      "Filter": {
+        "Tag": {
+          "Key": "retention-status",
+          "Value": "eligible"
+        }
+      },
+      "Expiration": {
+        "Days": __RETENTION_DAYS__
+      }
+    }
+  ]
+}

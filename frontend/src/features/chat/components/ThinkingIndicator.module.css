@@ -1,0 +1,57 @@
+.wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+}
+
+.pulseWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+}
+
+/* Vòng sáng cam pulse chậm quanh icon AI. */
+.pulseRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--shb-orange-100);
+}
+
+.pulseCore {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--shb-orange-50);
+  color: var(--shb-orange-500);
+  font-size: 14px;
+}
+
+.text {
+  font-size: 14px;
+  color: var(--shb-text-secondary);
+  line-height: 1.5;
+}
+
+.dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 2px;
+}
+
+.dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--shb-orange-400);
+}

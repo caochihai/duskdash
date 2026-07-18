@@ -1,0 +1,55 @@
+/* CSS Modules được kiểm chứng ngay trên trang này. */
+.page {
+  min-height: 100dvh;
+  padding: 32px 24px 64px;
+  background: var(--shb-canvas);
+}
+
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 680;
+  color: var(--shb-navy-800);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 0 0 24px;
+  color: var(--shb-text-secondary);
+  font-size: 14px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.cssProof {
+  padding: 14px 16px;
+  border-radius: var(--shb-radius-md);
+  background: linear-gradient(135deg, var(--shb-orange-50), var(--shb-navy-50));
+  border: 1px dashed var(--shb-orange-300);
+  font-size: 13.5px;
+  color: var(--shb-navy-700);
+}
+
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

@@ -1,0 +1,145 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-md);
+  background: var(--shb-surface);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+
+.card:hover {
+  border-color: var(--shb-orange-200);
+  box-shadow: var(--shb-shadow-sm);
+}
+
+.card:focus-visible {
+  outline: 3px solid var(--shb-orange-500);
+  outline-offset: 2px;
+}
+
+.cardSelected {
+  border-color: var(--shb-orange-500);
+  background: var(--shb-orange-50);
+}
+
+.top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.fileIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--shb-radius-sm);
+  background: var(--shb-orange-50);
+  color: var(--shb-orange-600);
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.cardSelected .fileIcon {
+  background: var(--shb-orange-100);
+}
+
+.check {
+  flex-shrink: 0;
+}
+
+.code {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--shb-text-muted);
+}
+
+.product {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--shb-navy-800);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.amount {
+  font-size: 13.5px;
+  font-weight: 680;
+  color: var(--shb-navy-700);
+  letter-spacing: -0.01em;
+}
+
+.metaRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.date {
+  font-size: 11px;
+  color: var(--shb-text-muted);
+}
+
+/* Thanh hành động khi có file được chọn. */
+.actionBar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--shb-orange-200);
+  border-radius: var(--shb-radius-lg);
+  background: var(--shb-surface-soft);
+  box-shadow: var(--shb-shadow-sm);
+}
+
+.actionCount {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--shb-navy-700);
+  margin-right: auto;
+}
+
+.selectAllRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.selectAllLabel {
+  font-size: 12px;
+  color: var(--shb-text-secondary);
+}
+
+@media (max-width: 1199px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}

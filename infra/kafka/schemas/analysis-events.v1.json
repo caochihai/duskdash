@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bank-ai.example.local/schemas/analysis-events.v1.json",
+  "title": "Bank AI analysis commands and events v1",
+  "allOf": [
+    {
+      "$ref": "event-envelope.v1.json"
+    },
+    {
+      "properties": {
+        "event_type": {
+          "enum": [
+            "analysis.requested",
+            "analysis.document-agent.requested",
+            "analysis.credit-agent.requested",
+            "analysis.compliance-agent.requested",
+            "analysis.validation.requested",
+            "analysis.synthesis.requested",
+            "analysis.started",
+            "analysis.plan.created",
+            "analysis.task.started",
+            "analysis.task.completed",
+            "finding.created",
+            "analysis.validation.completed",
+            "analysis.completed",
+            "analysis.failed"
+          ]
+        },
+        "resource": {
+          "properties": {
+            "type": {
+              "enum": [
+                "ANALYSIS_CASE",
+                "ANALYSIS_TASK",
+                "FINDING"
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "schema": {
+              "pattern": "^(analysis|finding)\\.[a-z0-9.-]+\\.v1$"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+

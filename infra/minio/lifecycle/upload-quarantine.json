@@ -1,0 +1,18 @@
+{
+  "Rules": [
+    {
+      "ID": "expire-quarantine-after-3-days",
+      "Status": "Enabled",
+      "Filter": {
+        "Prefix": ""
+      },
+      "Expiration": {
+        "Days": 3
+      },
+      "AbortIncompleteMultipartUpload": {
+        "DaysAfterInitiation": 1
+      }
+    }
+  ]
+}
+
