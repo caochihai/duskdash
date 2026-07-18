@@ -93,9 +93,15 @@ switch ($Action) {
         }
 
         $volumeName = $kafkaVolumes[0]
-        $volumeLabels = & docker volume inspect $volumeName `
-            --format '{{index .Labels "com.docker.compose.project"}}|{{index .Labels "com.docker.compose.volume"}}'
-        if ($LASTEXITCODE -ne 0 -or $volumeLabels -ne 'bank-ai-workbench|kafka_data') {
+        # {{json .Labels}} keeps the template free of embedded quotes, which
+        # Windows PowerShell 5.1 strips when passing arguments to native commands.
+        $volumeLabelsJson = & docker volume inspect $volumeName --format '{{json .Labels}}'
+        if ($LASTEXITCODE -ne 0) {
+            throw "Refusing to remove unexpected Docker volume: $volumeName"
+        }
+        $volumeLabels = ($volumeLabelsJson -join '') | ConvertFrom-Json
+        if ($volumeLabels.'com.docker.compose.project' -ne 'bank-ai-workbench' -or
+            $volumeLabels.'com.docker.compose.volume' -ne 'kafka_data') {
             throw "Refusing to remove unexpected Docker volume: $volumeName"
         }
 
