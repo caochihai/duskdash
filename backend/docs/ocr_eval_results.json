@@ -1,0 +1,17 @@
+[
+  {
+    "model": "gemma-4-31B-it",
+    "field_accuracy": 0.9333,
+    "cer": 0.0045,
+    "numeric_accuracy": 0.9722,
+    "numeric_detail": "35/36",
+    "decision_accuracy": 0.8333,
+    "latency_avg_s": 4.83,
+    "tokens_in_avg": 619,
+    "tokens_out_avg": 205,
+    "fails": [
+      "CR-I02.ma_ho_so: 'CR-C02'",
+      "CR-I03.dti_phan_tram[0]: 205 != 205.4"
+    ]
+  }
+]
