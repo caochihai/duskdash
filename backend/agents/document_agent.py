@@ -40,12 +40,42 @@ DOC_SCHEMAS = {
     # (benchmark: VLM đọc số từng dòng 6/6 đúng nhưng 2/3 model tự cộng tổng SAI)
     "sao_ke": '{"account_number": str, "period_months": int, '
               '"transactions": [{"date": str, "amount": number}]}',
+    # Phiếu thông tin khách hàng (bộ 6 hồ sơ demo chụp thật).
+    # Benchmark gemma-4-31B: 97% — ràng buộc định dạng mã hồ sơ chống nhầm I/1.
+    "phieu_tttd": '{"ma_ho_so": str (định dạng "CR-" + 1 CHỮ CÁI IN HOA + 2 chữ số, '
+                  'vd CR-A01/CR-I03; ký tự sau "CR-" luôn là CHỮ CÁI, không phải số 1), '
+                  '"loai": "doanh_nghiep"|"ca_nhan", "ten_khach_hang": str, '
+                  '"nguoi_dai_dien": str|null, "san_pham": str, '
+                  '"so_tien_de_nghi_ty": number, "de_xuat_so_bo": str, '
+                  '"cic_nhom": int|null, '
+                  '"doanh_thu_theo_nam_ty": [number]|null (DN: 2023,2024,2025), '
+                  '"ebitda_theo_nam_ty": [number]|null, '
+                  '"tong_thu_nhap_thang_trieu": number|null (cá nhân), '
+                  '"dti_phan_tram": number|null (cá nhân), '
+                  '"tong_gia_tri_tsdb_xu_ly_ty": number|null, '
+                  '"nhan_xet_so_bo": [str]}',
     "cccd": '{"full_name": str, "id_number": str, "date_of_birth": str}',
     "so_do": '{"owner_name": str, "address": str, "area_m2": number, "certificate_no": str}',
 }
 
 # Lưu kết quả trích xuất theo case để phục vụ info_request từ agent khác
 _extractions: dict[str, dict] = {}
+
+
+def _normalize_ma_ho_so(data: dict) -> dict:
+    """Chuẩn hóa mã hồ sơ bằng code theo định dạng CR-<chữ cái><2 số>:
+    sửa các nhầm lẫn OCR phổ biến (1<->I, 0<->O, SR-<->CR-)."""
+    import re
+
+    raw = str(data.get("ma_ho_so") or "").upper().strip().replace(" ", "")
+    if not raw:
+        return data
+    raw = re.sub(r"^[A-Z]R-?", "CR-", raw)  # SR-/GR-... đọc nhầm tiền tố
+    m = re.match(r"^CR-(.)(\d{2})$", raw)
+    if m:
+        ch = {"1": "I", "0": "O"}.get(m.group(1), m.group(1))
+        data["ma_ho_so"] = f"CR-{ch}{m.group(2)}"
+    return data
 
 
 def _derive_saoke_numbers(data: dict) -> dict:
@@ -84,6 +114,8 @@ async def _extract_one(doc: dict) -> tuple[str, dict]:
         )
         if dtype == "sao_ke":
             data = _derive_saoke_numbers(data)
+        if dtype == "phieu_tttd":
+            data = _normalize_ma_ho_so(data)
         return dtype, data
     return dtype, {"error": "không có dữ liệu trích xuất (thiếu ảnh hoặc đang ở rules mode)"}
 
