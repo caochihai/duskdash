@@ -84,7 +84,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ValueError)
     async def handle_value_error(request: Request, exc: ValueError) -> JSONResponse:
         # ValueError trong service là thông điệp validation viết cho người dùng
-        # (không chứa nội bộ hệ thống) — trả về để client biết sai ở đâu.
+        # (không chứa nội bộ hệ thống) — trả về cho client và ghi log để trace
+        # được nguyên nhân 422 từ phía server.
+        logger.info("VALIDATION_REJECTED", path=request.url.path, reason=str(exc))
         return _response(
             request,
             status=422,

@@ -192,7 +192,7 @@ class DocumentHighlighter:
                     "generated-reports", key, buffer.getvalue(), content_type="image/jpeg"
                 )
                 presigned = await self._storage.create_presigned_get(
-                    "generated-reports", key, expires_in_seconds=3600
+                    "generated-reports", key, expires_in_seconds=600
                 )
                 url = presigned.url if hasattr(presigned, "url") else str(presigned)
                 annotated.append(AnnotatedImage(key=key, url=url))
