@@ -323,7 +323,7 @@ class DocumentRepository:
                 available_at, created_at
             ) VALUES (
                 :outbox_id, 'DOCUMENT_VERSION', :version_id,
-                'document.processing.requested', 1, CAST(:version_id AS text),
+                'document.processing.requested', 1, :partition_key,
                 CAST(:event AS jsonb), CAST(:headers AS jsonb),
                 'PENDING', 0, :now, :now
             ) RETURNING id
@@ -331,6 +331,9 @@ class DocumentRepository:
             {
                 "outbox_id": outbox_id,
                 "version_id": document_version_id,
+                # asyncpg suy kiểu theo THAM SỐ: dùng lại :version_id (uuid) trong
+                # CAST(... AS text) sẽ gây AmbiguousParameterError, nên truyền chuỗi riêng.
+                "partition_key": str(document_version_id),
                 "event": event,
                 "headers": headers,
                 "now": now,

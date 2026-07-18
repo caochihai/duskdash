@@ -115,13 +115,14 @@ class AnalysisRepository:
                 available_at, created_at
             ) VALUES (
                 :outbox_id, 'ANALYSIS_CASE', :case_id, 'analysis.requested', 1,
-                CAST(:case_id AS text), CAST(:event AS jsonb),
+                :partition_key, CAST(:event AS jsonb),
                 CAST(:headers AS jsonb), 'PENDING', 0, :now, :now
             ) RETURNING id
             """,
             {
                 "outbox_id": outbox_id,
                 "case_id": analysis_case_id,
+                "partition_key": str(analysis_case_id),
                 "event": event,
                 "headers": headers,
                 "now": now,
@@ -251,13 +252,14 @@ class AnalysisRepository:
                 available_at, created_at
             ) VALUES (
                 :outbox_id, 'ANALYSIS_CASE', :case_id, 'analysis.requested', 1,
-                CAST(:case_id AS text), CAST(:event AS jsonb),
+                :partition_key, CAST(:event AS jsonb),
                 CAST(:headers AS jsonb), 'PENDING', 0, :now, :now
             ) RETURNING id
             """,
             {
                 "outbox_id": outbox_id,
                 "case_id": analysis_case_id,
+                "partition_key": str(analysis_case_id),
                 "event": event,
                 "headers": headers,
                 "now": now,
