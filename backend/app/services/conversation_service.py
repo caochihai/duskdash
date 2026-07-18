@@ -241,6 +241,24 @@ class ConversationService:
             raise RuntimeError("Conversation changed concurrently")
         return row
 
+    async def set_active_customer(
+        self,
+        principal: PrincipalLike,
+        conversation_id: UUID,
+        *,
+        customer_id: UUID,
+    ) -> Mapping[str, Any]:
+        """Gắn khách hàng vào hội thoại đang mở (vd: khách nháp vừa tạo từ upload)."""
+        await self.get(principal, conversation_id)
+        row = await self._repository.set_active_customer(
+            conversation_id,
+            employee_id=principal.employee_id,
+            customer_id=customer_id,
+        )
+        if row is None:
+            raise RuntimeError("Conversation changed concurrently")
+        return row
+
     async def update_title(
         self,
         principal: PrincipalLike,

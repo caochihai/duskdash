@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import builtins
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,9 +17,100 @@ from app.repositories.base import (
 )
 
 
+DRAFT_CUSTOMER_NAME = "Khách hàng mới (hồ sơ đang trích xuất)"
+
+
 class CustomerRepository:
     def __init__(self, session: AsyncSession) -> None:
         self.session = session
+
+    async def create_draft(self, *, employee_id: UUID, branch_id: UUID) -> Record:
+        """Tạo khách hàng nháp khi upload hồ sơ chưa gắn khách hàng.
+
+        Tên hiển thị dùng placeholder DRAFT_CUSTOMER_NAME; vision-LLM sẽ cập
+        nhật lại từ nội dung hồ sơ sau khi trích xuất. RLS insert policy yêu
+        cầu khách hàng thuộc chi nhánh của nhân viên đang thao tác.
+        """
+        party_id = uuid4()
+        customer_id = uuid4()
+        cif = f"CIF-AUTO-{uuid4().hex[:8].upper()}"
+
+        await execute_returning(
+            self.session,
+            """
+            INSERT INTO customer.party (
+                id, party_type, display_name, status, created_at, created_by,
+                updated_at, updated_by, version
+            ) VALUES (
+                :party_id, 'PERSON', :display_name, 'ACTIVE',
+                CURRENT_TIMESTAMP, :employee_id, CURRENT_TIMESTAMP, :employee_id, 1
+            ) RETURNING id
+            """,
+            {"party_id": party_id, "display_name": DRAFT_CUSTOMER_NAME, "employee_id": employee_id},
+        )
+        await execute_returning(
+            self.session,
+            """
+            INSERT INTO customer.person_profile (
+                party_id, full_name, date_of_birth, gender, nationality,
+                marital_status, occupation, updated_at
+            ) VALUES (
+                :party_id, :display_name, NULL, 'UNSPECIFIED', 'VN',
+                'UNSPECIFIED', NULL, CURRENT_TIMESTAMP
+            ) RETURNING party_id
+            """,
+            {"party_id": party_id, "display_name": DRAFT_CUSTOMER_NAME},
+        )
+        row = await execute_returning(
+            self.session,
+            """
+            INSERT INTO customer.customer (
+                id, party_id, customer_number, customer_segment, home_branch_id,
+                relationship_manager_id, onboarding_date, kyc_status, risk_rating,
+                risk_rating_as_of, status, created_at, updated_at, version
+            ) VALUES (
+                :customer_id, :party_id, :cif, 'MASS', :branch_id,
+                :employee_id, CURRENT_DATE, 'PENDING', 'UNRATED',
+                CURRENT_DATE, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1
+            ) RETURNING *
+            """,
+            {
+                "customer_id": customer_id,
+                "party_id": party_id,
+                "cif": cif,
+                "branch_id": branch_id,
+                "employee_id": employee_id,
+            },
+        )
+        if row is None:
+            raise RuntimeError("Draft customer creation failed")
+        return row
+
+    async def rename_draft_party(self, party_id: UUID, full_name: str) -> None:
+        """Đặt tên thật cho khách hàng nháp sau khi vision trích xuất hồ sơ.
+
+        Có guard LIKE để không bao giờ ghi đè tên của khách hàng thật.
+        """
+        await execute_returning(
+            self.session,
+            """
+            UPDATE customer.party
+            SET display_name = :full_name, updated_at = CURRENT_TIMESTAMP
+            WHERE id = :party_id AND display_name LIKE 'Khách hàng mới%'
+            RETURNING id
+            """,
+            {"party_id": party_id, "full_name": full_name},
+        )
+        await execute_returning(
+            self.session,
+            """
+            UPDATE customer.person_profile
+            SET full_name = :full_name, updated_at = CURRENT_TIMESTAMP
+            WHERE party_id = :party_id AND full_name LIKE 'Khách hàng mới%'
+            RETURNING party_id
+            """,
+            {"party_id": party_id, "full_name": full_name},
+        )
 
     async def list(
         self,

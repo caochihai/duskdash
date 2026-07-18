@@ -317,6 +317,8 @@ class LLMConversationResponder:
             logger.exception("HIGHLIGHT_ANALYSIS_FAILED")
             return None
 
+        renamed_customer = await self._rename_draft_customer(principal, context, result)
+
         return ConversationReply(
             content=render_highlight_markdown(result, links),
             route_type=route_type,
@@ -329,8 +331,40 @@ class LLMConversationResponder:
                 "highlight_segments": [seg.model_dump() for seg in result.segments],
                 "annotated_images": [link.key for link in links],
                 "images_analyzed": len(images),
+                "extracted_customer_name": result.extracted_customer_name,
+                "customer_renamed_from_document": renamed_customer,
             },
         )
+
+    async def _rename_draft_customer(
+        self,
+        principal: PrincipalLike,
+        context: Mapping[str, Any],
+        result: Any,
+    ) -> bool:
+        """Đặt tên thật cho khách hàng nháp từ hồ sơ vừa trích xuất (nếu có)."""
+        extracted = getattr(result, "extracted_customer_name", None)
+        overview = context.get("customer_overview") or {}
+        party_id = overview.get("party_id")
+        if not extracted or not str(extracted).strip() or party_id is None:
+            return False
+        factory = db_session.AsyncSessionFactory
+        if factory is None:
+            return False
+        try:
+            async with factory() as session, rls_transaction(
+                session,
+                employee_id=principal.employee_id,
+                branch_id=principal.branch_id,
+                is_admin=principal.is_admin,
+            ):
+                await CustomerRepository(session).rename_draft_party(
+                    UUID(str(party_id)), str(extracted).strip()[:200]
+                )
+            return True
+        except Exception:
+            logger.exception("DRAFT_CUSTOMER_RENAME_FAILED")
+            return False
 
     async def _respond_with_engine(
         self,

@@ -11,7 +11,9 @@ from app.schemas.common import APIModel, DecimalString
 
 
 class UploadCreateRequest(APIModel):
-    customer_id: UUID
+    # Không truyền customer_id -> backend tự tạo khách hàng nháp từ hồ sơ
+    # (tên sẽ được vision-LLM cập nhật sau khi trích xuất).
+    customer_id: UUID | None = None
     loan_application_id: UUID | None = None
     expected_document_type: str | None = Field(default=None, max_length=50)
     original_filename: str = Field(min_length=1, max_length=255)
@@ -23,6 +25,7 @@ class UploadCreateRequest(APIModel):
 class UploadResponse(APIModel):
     model_config = ConfigDict(from_attributes=True, extra="allow")
     upload_id: UUID
+    customer_id: UUID
     status: str
     upload_url: str
     headers: dict[str, str]

@@ -28,6 +28,7 @@ import { USE_MOCK_API } from '@/services/apiClient';
 import { useCustomers } from '@/hooks/useCustomers';
 import { claimCustomerAssignment } from '@/services/customerAssignmentService';
 import { getAssignedLoanApplicationId } from '@/services/customerService';
+import { setConversationCustomer } from '@/services/conversationService';
 import type { ChatMessage, ChatMode } from '@/types/chat';
 import type { ChatAttachment } from '@/types/attachment';
 import type { ChatSource } from '@/types/source';
@@ -293,6 +294,27 @@ export default function ChatPage() {
     [openCustomerConversation],
   );
 
+  /**
+   * Upload hồ sơ khi chưa chọn khách hàng -> backend đã tự tạo khách nháp.
+   * Gắn khách đó vào hội thoại hiện tại (server) + panel hồ sơ (client);
+   * tên khách sẽ được vision cập nhật từ nội dung hồ sơ sau tin nhắn đầu.
+   */
+  const handleCustomerAutoCreated = useCallback(
+    (customerId: string) => {
+      if (activeConversationId) {
+        void setConversationCustomer(activeConversationId, customerId);
+      }
+      void customersQuery.refetch().then((result) => {
+        const created = result.data?.find((item) => item.id === customerId);
+        if (created) {
+          setActiveCustomer(created);
+          setPanelOpen(true);
+        }
+      });
+    },
+    [activeConversationId, customersQuery],
+  );
+
   /** Xem hồ sơ khách hàng (từ card trong chat) -> mở panel, không đổi phiên chat. */
   const handleViewCustomer = useCallback((customerId: string) => {
     const found = customers.find((item) => item.id === customerId);
@@ -507,6 +529,7 @@ export default function ChatPage() {
               staffName={DEMO_USER.displayName}
               customers={customers}
               onSelectCustomer={handleSelectCustomer}
+              onCustomerAutoCreated={handleCustomerAutoCreated}
               onViewCustomer={handleViewCustomer}
               onLoanDecision={handleLoanDecision}
               uploadContext={{

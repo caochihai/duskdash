@@ -44,6 +44,8 @@ _SYSTEM_PROMPT = (
     "Với mỗi đoạn đánh dấu trên ảnh, cung cấp bbox_2d = [x1, y1, x2, y2] theo "
     "thang 0-1000 so với kích thước ảnh (góc trên-trái là 0,0). Nếu không "
     "định vị được thì để bbox_2d = null.\n"
+    "Nếu hồ sơ ghi rõ họ tên khách hàng, điền vào extracted_customer_name "
+    "(đúng nguyên văn, không suy đoán).\n"
     "TUYỆT ĐỐI không bịa nội dung không có trong ảnh."
 )
 
@@ -60,6 +62,11 @@ class HighlightResult(BaseModel):
     document_summary: str = Field(min_length=1, max_length=4000)
     answer: str = Field(min_length=1, max_length=8000, description="Trả lời câu hỏi của cán bộ")
     segments: list[HighlightSegment] = Field(default_factory=list)
+    extracted_customer_name: str | None = Field(
+        default=None,
+        max_length=200,
+        description="Họ tên đầy đủ của khách hàng đọc được từ hồ sơ (null nếu không có)",
+    )
 
 
 @dataclass(frozen=True)

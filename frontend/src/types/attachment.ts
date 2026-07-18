@@ -10,6 +10,8 @@ export interface ChatAttachment {
   /** 0–100, chỉ có ý nghĩa khi status = 'uploading'. */
   progress?: number;
   errorMessage?: string;
+  /** Khách hàng gắn với hồ sơ (backend tự tạo khách nháp khi chưa chọn). */
+  customerId?: string;
 }
 
 /** Giới hạn demo cho attachment. */

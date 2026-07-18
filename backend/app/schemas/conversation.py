@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from app.schemas.common import APIModel
 
@@ -18,7 +18,14 @@ class ConversationCreateRequest(APIModel):
 
 
 class ConversationUpdateRequest(APIModel):
-    title: str = Field(min_length=1, max_length=200, pattern=r".*\S.*")
+    title: str | None = Field(default=None, min_length=1, max_length=200, pattern=r".*\S.*")
+    active_customer_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def require_some_change(self) -> "ConversationUpdateRequest":
+        if self.title is None and self.active_customer_id is None:
+            raise ValueError("Provide title or active_customer_id to update")
+        return self
 
 
 class ConversationMessageRequest(APIModel):

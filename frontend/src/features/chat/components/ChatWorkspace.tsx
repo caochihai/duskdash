@@ -32,6 +32,8 @@ export interface ChatWorkspaceProps {
   /** Danh sách khách hàng cho lệnh `/` trong composer. */
   customers?: Customer[];
   onSelectCustomer?: (customer: Customer) => void;
+  /** Backend tự tạo khách hàng nháp khi upload hồ sơ chưa gắn khách. */
+  onCustomerAutoCreated?: (customerId: string) => void;
   onViewCustomer?: (customerId: string) => void;
   onLoanDecision?: (
     application: LoanApplication,
@@ -64,6 +66,7 @@ export function ChatWorkspace({
   staffName,
   customers,
   onSelectCustomer,
+  onCustomerAutoCreated,
   onViewCustomer,
   onLoanDecision,
   uploadContext,
@@ -119,6 +122,7 @@ export function ChatWorkspace({
         disabled={composerDisabled}
         customers={customers}
         onSelectCustomer={onSelectCustomer}
+        onCustomerAutoCreated={onCustomerAutoCreated}
         uploadContext={uploadContext}
       />
     </div>

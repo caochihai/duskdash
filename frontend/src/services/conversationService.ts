@@ -80,6 +80,17 @@ export async function updateConversation(
   return toConversation(response.data, { pinned: pinnedConversationIds.has(conversationId) });
 }
 
+/** Gắn khách hàng vào hội thoại đang mở (vd: khách nháp backend vừa tạo từ upload). */
+export async function setConversationCustomer(
+  conversationId: string,
+  customerId: string,
+): Promise<void> {
+  if (USE_MOCK_API) return;
+  await apiClient.patch(`/conversations/${conversationId}`, {
+    active_customer_id: customerId,
+  });
+}
+
 export async function deleteConversation(conversationId: string): Promise<void> {
   if (USE_MOCK_API) return mockDeleteConversation(conversationId);
 

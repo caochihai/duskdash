@@ -125,6 +125,28 @@ class ConversationRepository:
             },
         )
 
+    async def set_active_customer(
+        self,
+        conversation_id: UUID,
+        *,
+        employee_id: UUID,
+        customer_id: UUID,
+    ) -> Record | None:
+        return await execute_returning(
+            self.session,
+            """
+            UPDATE ai.conversation
+            SET active_customer_id = :customer_id
+            WHERE id = :conversation_id AND employee_id = :employee_id
+            RETURNING *
+            """,
+            {
+                "conversation_id": conversation_id,
+                "employee_id": employee_id,
+                "customer_id": customer_id,
+            },
+        )
+
     async def update_title(
         self,
         conversation_id: UUID,

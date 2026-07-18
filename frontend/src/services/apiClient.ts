@@ -112,6 +112,13 @@ export function normalizeError(error: unknown): ApiError {
     };
   }
 
+  // Error thường trong codebase mang thông điệp tiếng Việt viết cho người
+  // dùng (vd: "Vui lòng chọn khách hàng trước khi tải tài liệu.") — giữ nguyên
+  // thay vì ép về câu chung chung.
+  if (error instanceof Error && error.message) {
+    return { code: API_ERROR_CODES.unknown, message: error.message };
+  }
+
   return {
     code: API_ERROR_CODES.unknown,
     message: USER_MESSAGE[API_ERROR_CODES.unknown],
