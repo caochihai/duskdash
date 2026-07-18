@@ -38,8 +38,23 @@ DOC_SCHEMAS = {
             '"equity": number}',
     # Sao kê: chỉ yêu cầu model đọc TỪNG DÒNG giao dịch — tổng/bình quân do CODE tính
     # (benchmark: VLM đọc số từng dòng 6/6 đúng nhưng 2/3 model tự cộng tổng SAI)
-    "sao_ke": '{"account_number": str, "period_months": int, '
-              '"transactions": [{"date": str, "amount": number}]}',
+    "sao_ke": '{"account_number": str, "id_number": str|null (số CCCD trên sao kê), '
+              '"period_months": int, '
+              '"transactions": [{"date": str, "amount": number, '
+              '"direction": "in"|"out", "note": str|null}], '
+              '"red_flags": [str] (dấu hiệu bất thường nêu trong tài liệu: giao dịch vòng, '
+              'cờ bạc, tiền số...)}',
+    # Giấy tờ nghiệp vụ tổng quát (phiếu KYC, báo cáo CIC, HĐLĐ, đơn vay, chứng thư
+    # thẩm định giá, phiếu AML...) — schema chung, model tự điền theo loại tài liệu
+    "phieu_nghiep_vu": '{"loai_tai_lieu": str (vd: phiếu KYC, báo cáo CIC, hợp đồng '
+                       'lao động, đơn đề nghị vay, chứng thư thẩm định giá, phiếu AML), '
+                       '"ma_ho_so": str|null, "ho_ten": str|null, '
+                       '"id_number": str|null (số CMND/CCCD ghi trên tài liệu, '
+                       'null nếu bị che), '
+                       '"so_lieu_chinh": object (các con số quan trọng: thu nhập khai báo '
+                       'vs xác minh, dư nợ, DTI, giá trị tài sản, nhóm nợ CIC...), '
+                       '"red_flags": [str] (mọi cảnh báo/dấu hiệu rủi ro nêu trong tài liệu), '
+                       '"ket_luan": str|null (kết luận/đề xuất ghi trên tài liệu)}',
     # Phiếu thông tin khách hàng (bộ 6 hồ sơ demo chụp thật).
     # Benchmark gemma-4-31B: 97% — ràng buộc định dạng mã hồ sơ chống nhầm I/1.
     "phieu_tttd": '{"ma_ho_so": str (định dạng "CR-" + 1 CHỮ CÁI IN HOA + 2 chữ số, '
@@ -83,6 +98,8 @@ def _derive_saoke_numbers(data: dict) -> dict:
     txns = data.get("transactions") or []
     amounts = []
     for t in txns:
+        if str(t.get("direction", "in")).lower() == "out":
+            continue  # chỉ tính dòng tiền VÀO
         try:
             amounts.append(float(t.get("amount", 0) or 0))
         except (TypeError, ValueError):
@@ -121,14 +138,25 @@ async def _extract_one(doc: dict) -> tuple[str, dict]:
 
 
 async def handle_task(env: Envelope) -> Verdict:
+    import asyncio
+
     documents = env.payload.get("params", {}).get("documents", [])
     request = env.payload.get("params", {}).get("request", {})
     business_id = request.get("business_id", "")
 
+    # OCR song song, giới hạn 4 call đồng thời (tránh rate-limit provider)
+    sem = asyncio.Semaphore(4)
+
+    async def _bounded(doc):
+        async with sem:
+            return await _extract_one(doc)
+
+    results = await asyncio.gather(*[_bounded(d) for d in documents])
     extracted: dict[str, dict] = {}
-    for doc in documents:
-        dtype, data = await _extract_one(doc)
-        extracted[dtype] = data
+    for i, (dtype, data) in enumerate(results):
+        # nhiều tài liệu cùng loại -> đánh số key để không ghi đè
+        key = dtype if dtype not in extracted else f"{dtype}_{i}"
+        extracted[key] = data
     _extractions[env.case_id] = extracted
 
     findings: list[str] = []
@@ -168,6 +196,40 @@ async def handle_task(env: Envelope) -> Verdict:
                     source="CCCD + core banking",
                     quote=f"Tên người đại diện khớp: {biz['legal_rep_name']}",
                 ))
+
+    # Cross-check 3: số CCCD phải NHẤT QUÁN giữa mọi tài liệu (dấu hiệu giả mạo)
+    id_numbers: dict[str, str] = {}
+    for key, data in extracted.items():
+        if not isinstance(data, dict):
+            continue
+        idn = str(data.get("id_number") or "").strip()
+        if idn and "x" not in idn.lower() and len(idn) >= 9:  # bỏ số bị che
+            id_numbers[key] = idn
+    distinct = set(id_numbers.values())
+    if len(distinct) > 1:
+        decision = VerdictDecision.FLAG
+        findings.append(
+            f"NGHI GIẢ MẠO: số CCCD KHÔNG NHẤT QUÁN giữa các tài liệu — "
+            f"{len(distinct)} số khác nhau: "
+            + "; ".join(f"{k}: {v}" for k, v in id_numbers.items())
+        )
+    elif len(distinct) == 1:
+        evidence.append(Evidence(source="cross-check CCCD",
+                                 quote=f"Số CCCD nhất quán trên {len(id_numbers)} tài liệu"))
+
+    # Cross-check 4: gom red flags & kết luận tiêu cực ghi trên chính các tài liệu
+    NEGATIVE = ("TỪ CHỐI", "KHÔNG ĐẠT", "NGHI NGỜ", "GIẢ MẠO", "RẤT CAO",
+                "KHÔNG CÓ KHẢ NĂNG", "CHUYỂN AML", "KHÔNG ĐỀ XUẤT")
+    for key, data in extracted.items():
+        if not isinstance(data, dict):
+            continue
+        for rf in (data.get("red_flags") or [])[:5]:
+            findings.append(f"[{key}] {rf}")
+            decision = VerdictDecision.FLAG
+        kl = str(data.get("ket_luan") or "")
+        if kl and any(n in kl.upper() for n in NEGATIVE):
+            decision = VerdictDecision.FLAG
+            findings.append(f"[{key}] Kết luận trên tài liệu: {kl}")
 
     summary = (
         f"Đã trích xuất {len(extracted)} tài liệu"
