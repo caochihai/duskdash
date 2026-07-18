@@ -101,8 +101,8 @@ export function ChatComposer({
           customerId: uploadContext?.customerId,
           loanApplicationId: uploadContext?.loanApplicationId,
         });
-        // Giữ nguyên id cục bộ để tránh nhảy key trong danh sách.
-        updateAttachment(id, { ...uploaded, id });
+        // Giữ id cục bộ làm khoá React; UUID document thật nằm ở documentId.
+        updateAttachment(id, { ...uploaded, id, documentId: uploaded.id });
         // Upload khi chưa chọn khách hàng -> backend đã tự tạo khách nháp;
         // báo lên trên để gắn khách hàng đó vào phiên chat.
         if (!uploadContext?.customerId && uploaded.customerId) {

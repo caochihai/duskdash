@@ -12,6 +12,11 @@ export interface ChatAttachment {
   errorMessage?: string;
   /** Khách hàng gắn với hồ sơ (backend tự tạo khách nháp khi chưa chọn). */
   customerId?: string;
+  /**
+   * UUID document thật từ backend — dùng cho attachment_ids khi gửi tin.
+   * (`id` là khoá cục bộ của composer, giữ nguyên để React không nhảy key.)
+   */
+  documentId?: string;
 }
 
 /** Giới hạn demo cho attachment. */

@@ -42,7 +42,10 @@ export async function appendUserMessage(
     `/conversations/${conversationId}/messages`,
     {
       content,
-      attachment_ids: attachments.map((item) => item.id),
+      // documentId là UUID thật từ backend; id chỉ là khoá cục bộ của composer.
+      attachment_ids: attachments
+        .map((item) => item.documentId ?? item.id)
+        .filter((value) => /^[0-9a-f-]{36}$/i.test(value)),
     },
     {
       // Phân tích sâu (vision đọc hồ sơ / hội đồng multi-agent) chạy đồng bộ
