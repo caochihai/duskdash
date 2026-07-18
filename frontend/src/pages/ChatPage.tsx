@@ -7,6 +7,7 @@ import { ConversationSidebar } from '@/features/chat/components/ConversationSide
 import { MobileNavigationDrawer } from '@/components/layout/MobileNavigationDrawer';
 import { ChatWorkspace } from '@/features/chat/components/ChatWorkspace';
 import { SourceDrawer } from '@/features/chat/components/SourceDrawer';
+import { HighlightDocumentViewer, type HighlightDocument } from '@/features/chat/components/HighlightDocumentViewer';
 import { CustomerWorkspacePanel } from '@/features/customer/components/CustomerWorkspacePanel';
 import {
   DEMO_APPROVAL_LIMIT,
@@ -62,6 +63,7 @@ export default function ChatPage() {
   /* ---------------- Local UI state (không dùng TanStack Query) ---------------- */
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [highlightDoc, setHighlightDoc] = useState<HighlightDocument | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sourceDrawerOpen, setSourceDrawerOpen] = useState(false);
@@ -288,6 +290,7 @@ export default function ChatPage() {
   const handleSelectCustomer = useCallback(
     (customer: Customer) => {
       setActiveCustomer(customer);
+      setHighlightDoc(null);
       setPanelOpen(true);
       void openCustomerConversation(customer);
     },
@@ -314,6 +317,12 @@ export default function ChatPage() {
     },
     [activeConversationId, customersQuery],
   );
+
+  /** Bấm thumbnail hồ sơ highlight -> panel phải hiển thị ảnh đã đánh dấu. */
+  const handleOpenHighlightDocument = useCallback((doc: HighlightDocument) => {
+    setHighlightDoc(doc);
+    setPanelOpen(true);
+  }, []);
 
   /** Xem hồ sơ khách hàng (từ card trong chat) -> mở panel, không đổi phiên chat. */
   const handleViewCustomer = useCallback((customerId: string) => {
@@ -453,6 +462,7 @@ export default function ChatPage() {
 
   const closePanel = useCallback(() => {
     setPanelOpen(false);
+    setHighlightDoc(null);
   }, []);
 
   const openFullProfile = useCallback(
@@ -530,6 +540,7 @@ export default function ChatPage() {
               customers={customers}
               onSelectCustomer={handleSelectCustomer}
               onCustomerAutoCreated={handleCustomerAutoCreated}
+              onOpenHighlightDocument={handleOpenHighlightDocument}
               onViewCustomer={handleViewCustomer}
               onLoanDecision={handleLoanDecision}
               uploadContext={{
@@ -549,14 +560,22 @@ export default function ChatPage() {
                 aria-label="Kéo để đổi độ rộng panel"
                 onPointerDown={handleResizeStart}
               />
-              <CustomerWorkspacePanel
-                customer={activeCustomer}
-                records={customerRecords}
-                onClose={closePanel}
-                onOpenFullPage={openFullProfile}
-                onReviewInChat={handleReviewInChat}
-                onLoanDecision={handleLoanDecision}
-              />
+              {highlightDoc ? (
+                <HighlightDocumentViewer
+                  document={highlightDoc}
+                  onBack={() => setHighlightDoc(null)}
+                  onClose={closePanel}
+                />
+              ) : (
+                <CustomerWorkspacePanel
+                  customer={activeCustomer}
+                  records={customerRecords}
+                  onClose={closePanel}
+                  onOpenFullPage={openFullProfile}
+                  onReviewInChat={handleReviewInChat}
+                  onLoanDecision={handleLoanDecision}
+                />
+              )}
             </div>
           )}
         </div>
@@ -586,14 +605,22 @@ export default function ChatPage() {
           closable={false}
           styles={{ body: { padding: 0 } }}
         >
-          <CustomerWorkspacePanel
-            customer={activeCustomer}
-            records={customerRecords}
-            onClose={closePanel}
-            onOpenFullPage={openFullProfile}
-            onReviewInChat={handleReviewInChat}
-            onLoanDecision={handleLoanDecision}
-          />
+          {highlightDoc ? (
+            <HighlightDocumentViewer
+              document={highlightDoc}
+              onBack={() => setHighlightDoc(null)}
+              onClose={closePanel}
+            />
+          ) : (
+            <CustomerWorkspacePanel
+              customer={activeCustomer}
+              records={customerRecords}
+              onClose={closePanel}
+              onOpenFullPage={openFullProfile}
+              onReviewInChat={handleReviewInChat}
+              onLoanDecision={handleLoanDecision}
+            />
+          )}
         </Drawer>
       )}
 

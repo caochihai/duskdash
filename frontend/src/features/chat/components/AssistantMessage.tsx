@@ -12,6 +12,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { motion, useReducedMotion } from 'motion/react';
+import { MarkdownContent } from './MarkdownContent';
 import { MessageBlocks } from './MessageBlocks';
 import { SuggestedQuestions } from './SuggestedQuestions';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -28,6 +29,8 @@ export interface AssistantMessageProps {
   /** Có tin nhắn khác đang được tạo -> khoá các action gửi. */
   busy?: boolean;
   onViewCustomer?: (customerId: string) => void;
+  /** Bấm thumbnail hồ sơ highlight -> mở ở panel bên phải. */
+  onOpenHighlightDocument?: (doc: { name: string; url: string }) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,
@@ -43,6 +46,7 @@ export function AssistantMessage({
   onViewSources,
   busy = false,
   onViewCustomer,
+  onOpenHighlightDocument,
   onLoanDecision,
 }: AssistantMessageProps) {
   const { message: messageApi } = App.useApp();
@@ -152,7 +156,7 @@ export function AssistantMessage({
               onLoanDecision={onLoanDecision}
             />
           ) : (
-            <p className={styles.streamingText}>{message.content}</p>
+            <MarkdownContent content={message.content} />
           ))}
 
         {(isComplete || isStopped) && (
@@ -222,29 +226,45 @@ export function AssistantMessage({
             aria-label="Hồ sơ đã highlight"
             style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
           >
-            <Image.PreviewGroup>
-              {message.highlightDocuments.map((doc) => (
-                <figure key={doc.url} style={{ margin: 0, width: 148 }}>
-                  <Image
-                    src={doc.url}
-                    alt={doc.name}
-                    width={148}
-                    height={104}
-                    style={{
-                      objectFit: 'cover',
-                      borderRadius: 10,
-                      border: '1px solid #EAE3DA',
-                      cursor: 'zoom-in',
-                    }}
-                  />
-                  <figcaption
-                    style={{ fontSize: 12, color: '#667085', marginTop: 4, textAlign: 'center' }}
-                  >
-                    {doc.name}
-                  </figcaption>
-                </figure>
-              ))}
-            </Image.PreviewGroup>
+            {message.highlightDocuments.map((doc) => (
+              <button
+                key={doc.url}
+                type="button"
+                onClick={() => onOpenHighlightDocument?.(doc)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  cursor: 'pointer',
+                  width: 148,
+                }}
+                aria-label={`Mở ${doc.name} ở panel hồ sơ`}
+              >
+                <Image
+                  src={doc.url}
+                  alt={doc.name}
+                  width={148}
+                  height={104}
+                  preview={false}
+                  style={{
+                    objectFit: 'cover',
+                    borderRadius: 10,
+                    border: '1px solid #EAE3DA',
+                  }}
+                />
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#667085',
+                    marginTop: 4,
+                    textAlign: 'center',
+                  }}
+                >
+                  {doc.name}
+                </span>
+              </button>
+            ))}
           </div>
         )}
 
