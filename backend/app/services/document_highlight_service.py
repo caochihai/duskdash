@@ -69,6 +69,16 @@ _SYSTEM_PROMPT = (
     "Luôn đề xuất 3-5 câu hỏi tiếp theo trong suggested_questions — những câu "
     "cán bộ NÊN hỏi dựa trên nội dung hồ sơ (đặc biệt quan trọng khi cán bộ "
     "gửi hồ sơ mà chưa kèm câu hỏi: hãy chủ động tóm tắt và dẫn dắt).\n"
+    "KIỂM TRA TÍNH ĐẦY ĐỦ: xác định loại hồ sơ (vay cá nhân mua nhà, vay SME "
+    "vốn lưu động, thế chấp...) rồi đối chiếu với checklist chuẩn — vd: "
+    "CCCD/hộ chiếu, đăng ký kinh doanh, BCTC 2 năm gần nhất, sao kê tài "
+    "khoản 6 tháng, hợp đồng/giấy tờ tài sản đảm bảo (sổ đỏ, đăng ký xe), "
+    "chứng thư thẩm định giá, phương án sử dụng vốn & trả nợ (bắt buộc theo "
+    "Thông tư 39/2016/TT-NHNN), giấy tờ chứng minh thu nhập. Giấy tờ nào "
+    "checklist cần mà KHÔNG thấy trong (các) ảnh thì liệt kê vào "
+    "missing_documents kèm lý do cần và căn cứ; hồ sơ đã đủ thì để trống. "
+    "Trong answer, nếu thiếu thông tin để kết luận, hãy nói rõ đang thiếu gì "
+    "và đề nghị cán bộ upload bổ sung để phân tích tiếp.\n"
     "TUYỆT ĐỐI không bịa nội dung không có trong ảnh."
 )
 
@@ -86,6 +96,12 @@ class HighlightSegment(BaseModel):
     bbox_2d: list[int] | None = Field(default=None, description="[x1,y1,x2,y2] thang 0-1000")
 
 
+class MissingDocument(BaseModel):
+    name: str = Field(min_length=1, max_length=200, description="Tên giấy tờ còn thiếu")
+    reason: str = Field(min_length=1, max_length=300, description="Vì sao cần giấy tờ này")
+    legal_basis: str | None = Field(default=None, max_length=300)
+
+
 class HighlightResult(BaseModel):
     document_summary: str = Field(min_length=1, max_length=4000)
     answer: str = Field(min_length=1, max_length=8000, description="Trả lời câu hỏi của cán bộ")
@@ -99,6 +115,11 @@ class HighlightResult(BaseModel):
         default_factory=list,
         max_length=5,
         description="3-5 câu hỏi tiếp theo cán bộ nên hỏi dựa trên nội dung hồ sơ",
+    )
+    missing_documents: list[MissingDocument] = Field(
+        default_factory=list,
+        max_length=8,
+        description="Giấy tờ còn thiếu so với checklist chuẩn của loại hồ sơ này",
     )
 
 
@@ -124,6 +145,17 @@ def render_highlight_markdown(result: HighlightResult, links: list[AnnotatedImag
     # Ảnh đã highlight không chèn link vào text — client render gallery riêng
     # từ metadata.highlight_documents (chat giữ vai trò tương tác thuần).
     del links
+    if result.missing_documents:
+        lines.append("")
+        lines.append("**📋 Hồ sơ còn thiếu — cần bổ sung để tiếp tục phân tích:**")
+        for index, item in enumerate(result.missing_documents[:8], start=1):
+            basis = f" _(⚖️ {item.legal_basis})_" if item.legal_basis else ""
+            lines.append(f"{index}. **{item.name}** — {item.reason}{basis}")
+        lines.append("")
+        lines.append(
+            "> 📎 Đính kèm các giấy tờ trên ngay trong hội thoại này, "
+            "SH-AI sẽ phân tích tiếp và cập nhật kết luận."
+        )
     if result.suggested_questions:
         lines.append("")
         lines.append("**💡 Gợi ý câu hỏi tiếp theo:**")

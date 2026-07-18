@@ -343,6 +343,7 @@ class LLMConversationResponder:
                 "extracted_customer_name": result.extracted_customer_name,
                 "customer_renamed_from_document": renamed_customer,
                 "suggested_questions": result.suggested_questions,
+                "missing_documents": [item.model_dump() for item in result.missing_documents],
             },
         )
 
