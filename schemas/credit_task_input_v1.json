@@ -1,0 +1,214 @@
+{
+  "$comment": "Shape-level integration schema. CreditTaskInputV1.model_validate remains authoritative for cross-field and date invariants.",
+  "$defs": {
+    "CreditRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "request_type": {
+          "$ref": "#/$defs/RequestType"
+        },
+        "product_code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Product Code",
+          "type": "string"
+        },
+        "current_limit": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?:\\d+(?:\\.\\d*)?|\\.\\d+)$",
+              "type": "string"
+            }
+          ],
+          "title": "Current Limit"
+        },
+        "requested_limit": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?:0*(?:[1-9]\\d*)(?:\\.\\d+)?|0*\\.\\d*[1-9]\\d*)$",
+              "type": "string"
+            }
+          ],
+          "title": "Requested Limit"
+        },
+        "requested_tenor_months": {
+          "exclusiveMinimum": 0,
+          "title": "Requested Tenor Months",
+          "type": "integer"
+        },
+        "currency": {
+          "pattern": "^[A-Z]{3}$",
+          "title": "Currency",
+          "type": "string"
+        },
+        "purpose": {
+          "maxLength": 1000,
+          "minLength": 3,
+          "title": "Purpose",
+          "type": "string"
+        },
+        "collateral_required": {
+          "title": "Collateral Required",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "request_type",
+        "product_code",
+        "current_limit",
+        "requested_limit",
+        "requested_tenor_months",
+        "currency",
+        "purpose",
+        "collateral_required"
+      ],
+      "title": "CreditRequest",
+      "type": "object"
+    },
+    "Permissions": {
+      "additionalProperties": false,
+      "properties": {
+        "allowed_scopes": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Allowed Scopes",
+          "type": "array",
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "allowed_scopes"
+      ],
+      "title": "Permissions",
+      "type": "object"
+    },
+    "RequestType": {
+      "enum": [
+        "RENEWAL",
+        "LIMIT_REVIEW"
+      ],
+      "title": "RequestType",
+      "type": "string"
+    },
+    "TaskType": {
+      "enum": [
+        "CREDIT_RENEWAL_REVIEW",
+        "CREDIT_LIMIT_REVIEW"
+      ],
+      "title": "TaskType",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "task_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Task Id",
+      "type": "string"
+    },
+    "case_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Case Id",
+      "type": "string"
+    },
+    "task_type": {
+      "$ref": "#/$defs/TaskType"
+    },
+    "customer_id": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Customer Id",
+      "type": "string"
+    },
+    "credit_request": {
+      "$ref": "#/$defs/CreditRequest"
+    },
+    "as_of_date": {
+      "format": "date",
+      "title": "As Of Date",
+      "type": "string"
+    },
+    "permissions": {
+      "$ref": "#/$defs/Permissions"
+    },
+    "plan_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Plan Id"
+    },
+    "plan_version": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Plan Version"
+    },
+    "attempt": {
+      "default": 1,
+      "minimum": 1,
+      "title": "Attempt",
+      "type": "integer"
+    },
+    "parent_run_id": {
+      "anyOf": [
+        {
+          "maxLength": 128,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Parent Run Id"
+    }
+  },
+  "required": [
+    "task_id",
+    "case_id",
+    "task_type",
+    "customer_id",
+    "credit_request",
+    "as_of_date",
+    "permissions"
+  ],
+  "title": "CreditTaskInputV1",
+  "type": "object",
+  "x-credit-agent-runtime-invariants": [
+    "task_type must match credit_request.request_type",
+    "as_of_date cannot be in the future",
+    "all undeclared fields are rejected"
+  ]
+}

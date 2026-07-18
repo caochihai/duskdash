@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shb-credit-agent"
+version = "1.0.0"
+description = "Framework-neutral SME credit renewal specialist agent"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.10,<3",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+]
+dev = [
+    "fastapi>=0.115,<1",
+    "httpx>=0.28,<1",
+    "jsonschema>=4.23,<5",
+    "pytest>=8,<10",
+]
+eval = [
+    "httpx>=0.28,<1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+credit_agent = ["py.typed"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]

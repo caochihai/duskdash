@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "task_id": "demo-credit-renewal-001",
+  "case_id": "demo-case-001",
+  "task_type": "CREDIT_RENEWAL_REVIEW",
+  "customer_id": "demo-customer-masked-001",
+  "credit_request": {
+    "request_type": "RENEWAL",
+    "product_code": "SME_WORKING_CAPITAL",
+    "current_limit": "10000000000",
+    "requested_limit": "12000000000",
+    "requested_tenor_months": 12,
+    "currency": "VND",
+    "purpose": "Renew the revolving working-capital facility for normal business operations.",
+    "collateral_required": true
+  },
+  "as_of_date": "2026-06-30",
+  "permissions": {
+    "allowed_scopes": [
+      "customer:read",
+      "credit:read",
+      "transactions:read",
+      "financials:read",
+      "collateral:read",
+      "policy:read"
+    ]
+  },
+  "plan_id": "demo-plan-001",
+  "plan_version": "1",
+  "attempt": 1,
+  "parent_run_id": null
+}
