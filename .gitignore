@@ -2,6 +2,8 @@
 .env
 **/.env
 *.key
+# Cấu hình local của Claude Code (có thể chứa key trong allowlist)
+.claude/
 
 # Dữ liệu runtime & log
 backend/data/
@@ -24,3 +26,6 @@ venv/
 Thumbs.db
 .vscode/
 .idea/
+
+# Ảnh Zalo gốc ở root (bản chuẩn đã nằm trong backend/sample_docs/)
+/z*.jpg

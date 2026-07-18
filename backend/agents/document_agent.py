@@ -36,8 +36,39 @@ DOC_SCHEMAS = {
             '"business_lines": [str], "registered_capital": number}',
     "bctc": '{"year": int, "revenue": number, "ebitda": number, "total_debt": number, '
             '"equity": number}',
-    "sao_ke": '{"account_number": str, "period_months": int, "total_inflow": number, '
-              '"avg_monthly_inflow": number}',
+    # Sao kê: chỉ yêu cầu model đọc TỪNG DÒNG giao dịch — tổng/bình quân do CODE tính
+    # (benchmark: VLM đọc số từng dòng 6/6 đúng nhưng 2/3 model tự cộng tổng SAI)
+    "sao_ke": '{"account_number": str, "id_number": str|null (số CCCD trên sao kê), '
+              '"period_months": int, '
+              '"transactions": [{"date": str, "amount": number, '
+              '"direction": "in"|"out", "note": str|null}], '
+              '"red_flags": [str] (dấu hiệu bất thường nêu trong tài liệu: giao dịch vòng, '
+              'cờ bạc, tiền số...)}',
+    # Giấy tờ nghiệp vụ tổng quát (phiếu KYC, báo cáo CIC, HĐLĐ, đơn vay, chứng thư
+    # thẩm định giá, phiếu AML...) — schema chung, model tự điền theo loại tài liệu
+    "phieu_nghiep_vu": '{"loai_tai_lieu": str (vd: phiếu KYC, báo cáo CIC, hợp đồng '
+                       'lao động, đơn đề nghị vay, chứng thư thẩm định giá, phiếu AML), '
+                       '"ma_ho_so": str|null, "ho_ten": str|null, '
+                       '"id_number": str|null (số CMND/CCCD ghi trên tài liệu, '
+                       'null nếu bị che), '
+                       '"so_lieu_chinh": object (các con số quan trọng: thu nhập khai báo '
+                       'vs xác minh, dư nợ, DTI, giá trị tài sản, nhóm nợ CIC...), '
+                       '"red_flags": [str] (mọi cảnh báo/dấu hiệu rủi ro nêu trong tài liệu), '
+                       '"ket_luan": str|null (kết luận/đề xuất ghi trên tài liệu)}',
+    # Phiếu thông tin khách hàng (bộ 6 hồ sơ demo chụp thật).
+    # Benchmark gemma-4-31B: 97% — ràng buộc định dạng mã hồ sơ chống nhầm I/1.
+    "phieu_tttd": '{"ma_ho_so": str (định dạng "CR-" + 1 CHỮ CÁI IN HOA + 2 chữ số, '
+                  'vd CR-A01/CR-I03; ký tự sau "CR-" luôn là CHỮ CÁI, không phải số 1), '
+                  '"loai": "doanh_nghiep"|"ca_nhan", "ten_khach_hang": str, '
+                  '"nguoi_dai_dien": str|null, "san_pham": str, '
+                  '"so_tien_de_nghi_ty": number, "de_xuat_so_bo": str, '
+                  '"cic_nhom": int|null, '
+                  '"doanh_thu_theo_nam_ty": [number]|null (DN: 2023,2024,2025), '
+                  '"ebitda_theo_nam_ty": [number]|null, '
+                  '"tong_thu_nhap_thang_trieu": number|null (cá nhân), '
+                  '"dti_phan_tram": number|null (cá nhân), '
+                  '"tong_gia_tri_tsdb_xu_ly_ty": number|null, '
+                  '"nhan_xet_so_bo": [str]}',
     "cccd": '{"full_name": str, "id_number": str, "date_of_birth": str}',
     "so_do": '{"owner_name": str, "address": str, "area_m2": number, "certificate_no": str}',
 }
@@ -46,31 +77,86 @@ DOC_SCHEMAS = {
 _extractions: dict[str, dict] = {}
 
 
+def _normalize_ma_ho_so(data: dict) -> dict:
+    """Chuẩn hóa mã hồ sơ bằng code theo định dạng CR-<chữ cái><2 số>:
+    sửa các nhầm lẫn OCR phổ biến (1<->I, 0<->O, SR-<->CR-)."""
+    import re
+
+    raw = str(data.get("ma_ho_so") or "").upper().strip().replace(" ", "")
+    if not raw:
+        return data
+    raw = re.sub(r"^[A-Z]R-?", "CR-", raw)  # SR-/GR-... đọc nhầm tiền tố
+    m = re.match(r"^CR-(.)(\d{2})$", raw)
+    if m:
+        ch = {"1": "I", "0": "O"}.get(m.group(1), m.group(1))
+        data["ma_ho_so"] = f"CR-{ch}{m.group(2)}"
+    return data
+
+
+def _derive_saoke_numbers(data: dict) -> dict:
+    """Tổng/bình quân dòng tiền TÍNH BẰNG CODE từ line items — không tin LLM cộng số."""
+    txns = data.get("transactions") or []
+    amounts = []
+    for t in txns:
+        if str(t.get("direction", "in")).lower() == "out":
+            continue  # chỉ tính dòng tiền VÀO
+        try:
+            amounts.append(float(t.get("amount", 0) or 0))
+        except (TypeError, ValueError):
+            continue
+    if amounts:
+        total = sum(amounts)
+        months = data.get("period_months") or 12
+        data["total_inflow"] = total
+        data["avg_monthly_inflow"] = total / months
+        data["derived_by"] = "code"  # minh bạch trên dashboard/audit
+    return data
+
+
 async def _extract_one(doc: dict) -> tuple[str, dict]:
     dtype = doc.get("doc_type", "unknown")
     if "extracted" in doc:  # đã có dữ liệu cấu trúc (fixtures / đã trích xuất)
-        return dtype, doc["extracted"]
+        data = doc["extracted"]
+        if dtype == "sao_ke":
+            data = _derive_saoke_numbers(data)
+        return dtype, data
     if config.LLM_MODE in ("llm", "hybrid") and doc.get("image_path"):
         data = await llm.vision_extract(
             system=f"Bạn là chuyên viên nhập liệu ngân hàng. Trích xuất chính xác "
-                   f"thông tin từ tài liệu loại '{dtype}'. Trả về JSON đúng schema. "
+                   f"thông tin từ tài liệu loại '{dtype}'. Giữ nguyên dấu tiếng Việt. "
+                   f"Chỉ trả về JSON đúng schema, không giải thích. "
                    f"Trường không đọc được để null.",
             image_path=doc["image_path"],
             schema_hint=DOC_SCHEMAS.get(dtype, "{}"),
         )
+        if dtype == "sao_ke":
+            data = _derive_saoke_numbers(data)
+        if dtype == "phieu_tttd":
+            data = _normalize_ma_ho_so(data)
         return dtype, data
     return dtype, {"error": "không có dữ liệu trích xuất (thiếu ảnh hoặc đang ở rules mode)"}
 
 
 async def handle_task(env: Envelope) -> Verdict:
+    import asyncio
+
     documents = env.payload.get("params", {}).get("documents", [])
     request = env.payload.get("params", {}).get("request", {})
     business_id = request.get("business_id", "")
 
+    # OCR song song, giới hạn 4 call đồng thời (tránh rate-limit provider)
+    sem = asyncio.Semaphore(4)
+
+    async def _bounded(doc):
+        async with sem:
+            return await _extract_one(doc)
+
+    results = await asyncio.gather(*[_bounded(d) for d in documents])
     extracted: dict[str, dict] = {}
-    for doc in documents:
-        dtype, data = await _extract_one(doc)
-        extracted[dtype] = data
+    for i, (dtype, data) in enumerate(results):
+        # nhiều tài liệu cùng loại -> đánh số key để không ghi đè
+        key = dtype if dtype not in extracted else f"{dtype}_{i}"
+        extracted[key] = data
     _extractions[env.case_id] = extracted
 
     findings: list[str] = []
@@ -110,6 +196,40 @@ async def handle_task(env: Envelope) -> Verdict:
                     source="CCCD + core banking",
                     quote=f"Tên người đại diện khớp: {biz['legal_rep_name']}",
                 ))
+
+    # Cross-check 3: số CCCD phải NHẤT QUÁN giữa mọi tài liệu (dấu hiệu giả mạo)
+    id_numbers: dict[str, str] = {}
+    for key, data in extracted.items():
+        if not isinstance(data, dict):
+            continue
+        idn = str(data.get("id_number") or "").strip()
+        if idn and "x" not in idn.lower() and len(idn) >= 9:  # bỏ số bị che
+            id_numbers[key] = idn
+    distinct = set(id_numbers.values())
+    if len(distinct) > 1:
+        decision = VerdictDecision.FLAG
+        findings.append(
+            f"NGHI GIẢ MẠO: số CCCD KHÔNG NHẤT QUÁN giữa các tài liệu — "
+            f"{len(distinct)} số khác nhau: "
+            + "; ".join(f"{k}: {v}" for k, v in id_numbers.items())
+        )
+    elif len(distinct) == 1:
+        evidence.append(Evidence(source="cross-check CCCD",
+                                 quote=f"Số CCCD nhất quán trên {len(id_numbers)} tài liệu"))
+
+    # Cross-check 4: gom red flags & kết luận tiêu cực ghi trên chính các tài liệu
+    NEGATIVE = ("TỪ CHỐI", "KHÔNG ĐẠT", "NGHI NGỜ", "GIẢ MẠO", "RẤT CAO",
+                "KHÔNG CÓ KHẢ NĂNG", "CHUYỂN AML", "KHÔNG ĐỀ XUẤT")
+    for key, data in extracted.items():
+        if not isinstance(data, dict):
+            continue
+        for rf in (data.get("red_flags") or [])[:5]:
+            findings.append(f"[{key}] {rf}")
+            decision = VerdictDecision.FLAG
+        kl = str(data.get("ket_luan") or "")
+        if kl and any(n in kl.upper() for n in NEGATIVE):
+            decision = VerdictDecision.FLAG
+            findings.append(f"[{key}] Kết luận trên tài liệu: {kl}")
 
     summary = (
         f"Đã trích xuất {len(extracted)} tài liệu"
