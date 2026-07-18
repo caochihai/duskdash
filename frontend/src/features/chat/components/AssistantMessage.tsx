@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { App, Alert, Button, Tooltip } from 'antd';
+import { App, Alert, Button, Image, Tooltip } from 'antd';
 import {
   BookOutlined,
   CopyOutlined,
@@ -213,6 +213,38 @@ export function AssistantMessage({
                 </Button>
               </Tooltip>
             )}
+          </div>
+        )}
+
+        {isComplete && message.highlightDocuments && message.highlightDocuments.length > 0 && (
+          <div
+            role="group"
+            aria-label="Hồ sơ đã highlight"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
+          >
+            <Image.PreviewGroup>
+              {message.highlightDocuments.map((doc) => (
+                <figure key={doc.url} style={{ margin: 0, width: 148 }}>
+                  <Image
+                    src={doc.url}
+                    alt={doc.name}
+                    width={148}
+                    height={104}
+                    style={{
+                      objectFit: 'cover',
+                      borderRadius: 10,
+                      border: '1px solid #EAE3DA',
+                      cursor: 'zoom-in',
+                    }}
+                  />
+                  <figcaption
+                    style={{ fontSize: 12, color: '#667085', marginTop: 4, textAlign: 'center' }}
+                  >
+                    {doc.name}
+                  </figcaption>
+                </figure>
+              ))}
+            </Image.PreviewGroup>
           </div>
         )}
 

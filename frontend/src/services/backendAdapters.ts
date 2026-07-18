@@ -29,6 +29,9 @@ export function toChatMessage(
   reply?: BackendConversationReply | null,
 ): ChatMessage {
   const sources = reply ? citationsToSources(reply.metadata.citations) : undefined;
+  const metadata = reply?.metadata ?? (value as { metadata?: Record<string, unknown> }).metadata;
+  const highlightDocuments = toHighlightDocuments(metadata?.highlight_documents);
+  const suggestions = toSuggestions(metadata?.suggested_questions);
   return {
     id: value.id,
     conversationId: value.conversation_id,
@@ -37,7 +40,36 @@ export function toChatMessage(
     status: 'completed',
     createdAt: value.created_at ?? new Date().toISOString(),
     ...(sources?.length ? { sources } : {}),
+    ...(highlightDocuments?.length ? { highlightDocuments } : {}),
+    ...(suggestions?.length ? { suggestions } : {}),
   };
+}
+
+/** Ảnh hồ sơ đã vẽ khung highlight từ metadata của responder. */
+function toHighlightDocuments(value: unknown): ChatMessage['highlightDocuments'] {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter(
+      (item): item is { name?: string; url: string } =>
+        Boolean(item) && typeof item === 'object' && typeof (item as { url?: unknown }).url === 'string',
+    )
+    .map((item, index) => ({
+      name: typeof item.name === 'string' ? item.name : `Hồ sơ ${index + 1} (đã highlight)`,
+      url: item.url,
+    }));
+}
+
+/** Câu hỏi gợi ý do agent sinh — thành nút bấm-để-hỏi. */
+function toSuggestions(value: unknown): ChatMessage['suggestions'] {
+  if (!Array.isArray(value)) return undefined;
+  return value
+    .filter((item): item is string => typeof item === 'string' && item.trim().length > 0)
+    .slice(0, 5)
+    .map((question, index) => ({
+      id: `ai-suggest-${index}`,
+      label: question,
+      prompt: question,
+    }));
 }
 
 function citationsToSources(value: unknown): ChatSource[] | undefined {

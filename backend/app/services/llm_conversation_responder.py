@@ -330,6 +330,15 @@ class LLMConversationResponder:
                 "highlight_model": self._highlighter.model_name,
                 "highlight_segments": [seg.model_dump() for seg in result.segments],
                 "annotated_images": [link.key for link in links],
+                "highlight_documents": [
+                    {
+                        "index": index,
+                        "name": f"Hồ sơ {index + 1} (đã highlight)",
+                        "url": link.url,
+                        "key": link.key,
+                    }
+                    for index, link in enumerate(links)
+                ],
                 "images_analyzed": len(images),
                 "extracted_customer_name": result.extracted_customer_name,
                 "customer_renamed_from_document": renamed_customer,

@@ -106,7 +106,9 @@ def test_render_highlight_markdown_levels_and_links() -> None:
     assert "🔴 **[CẢNH BÁO]**" in content
     assert "🟡 **[NHẤN MẠNH]**" in content
     assert "Khác với số CCCD" in content
-    assert "https://minio/presigned/x" in content
+    # Ảnh highlight đi qua metadata.highlight_documents (gallery), không chèn
+    # link vào text để chat giữ vai trò tương tác thuần.
+    assert "https://minio/presigned/x" not in content
 
 
 @pytest.mark.asyncio

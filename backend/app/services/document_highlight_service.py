@@ -94,11 +94,9 @@ def render_highlight_markdown(result: HighlightResult, links: list[AnnotatedImag
             lines.append(f"> {icon} **[{label}]** “{segment.text}”")
             lines.append(f"> ↳ _{segment.reason}_")
             lines.append(">")
-    if links:
-        lines.append("")
-        lines.append("**🖼 Ảnh hồ sơ đã đánh dấu vùng cần chú ý:**")
-        for index, link in enumerate(links, start=1):
-            lines.append(f"- [Hồ sơ đã highlight — trang {index}]({link.url})")
+    # Ảnh đã highlight không chèn link vào text — client render gallery riêng
+    # từ metadata.highlight_documents (chat giữ vai trò tương tác thuần).
+    del links
     if result.suggested_questions:
         lines.append("")
         lines.append("**💡 Gợi ý câu hỏi tiếp theo:**")
@@ -165,9 +163,10 @@ class DocumentHighlighter:
                 by_image.setdefault(segment.document_index, []).append(segment)
 
         annotated: list[AnnotatedImage] = []
-        for index, segments in sorted(by_image.items()):
-            if index >= len(images):
-                continue
+        # Mỗi ảnh upload luôn có một bản output (kể cả khi model không định vị
+        # được vùng nào) để danh sách nút ảnh khớp 1-1 với hồ sơ người dùng gửi.
+        for index in range(len(images)):
+            segments = by_image.get(index, [])
             try:
                 image = Image.open(io.BytesIO(images[index])).convert("RGB")
                 overlay = ImageDraw.Draw(image, "RGBA")

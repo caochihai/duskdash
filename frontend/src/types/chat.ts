@@ -182,6 +182,8 @@ export interface ChatMessage {
   sources?: ChatSource[];
   attachments?: ChatAttachment[];
   suggestions?: ChatSuggestion[];
+  /** Ảnh hồ sơ đã highlight (khung màu vẽ trực tiếp) — bấm để xem bản to. */
+  highlightDocuments?: { name: string; url: string }[];
   /** Phase hiện tại khi status = 'thinking'. */
   phase?: AIProcessingPhase;
   /**
