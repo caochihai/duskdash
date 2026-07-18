@@ -20,6 +20,8 @@ from app.config import Settings
 from app.db import session as db_session
 from app.db.rls_context import set_rls_context
 from app.repositories.identity_repository import IdentityRepository
+from app.providers.llm.openai_compat import OpenAICompatLLMProvider
+from app.services.llm_conversation_responder import LLMConversationResponder
 from app.services.mock_conversation_responder import MockConversationResponder
 from app.storage.minio_storage import Boto3MinioStorage
 
@@ -290,11 +292,25 @@ class DefaultRuntimeAdapters:
         application.state.redis_pubsub = RedisPubSub(redis)
         application.state.storage = storage
         application.state.context_router = AuthorizedContextRouter()
-        application.state.conversation_responder = (
-            MockConversationResponder()
-            if settings.llm_provider.casefold() == "mock" and not settings.is_production
-            else None
-        )
+        provider_name = settings.llm_provider.casefold()
+        if provider_name == "mock" and not settings.is_production:
+            responder: object | None = MockConversationResponder()
+        elif (
+            provider_name != "mock"
+            and settings.llm_api_url
+            and settings.llm_api_key is not None
+        ):
+            responder = LLMConversationResponder(
+                OpenAICompatLLMProvider(
+                    provider=settings.llm_provider,
+                    api_url=settings.llm_api_url,
+                    api_key=settings.llm_api_key.get_secret_value(),
+                    model_name=settings.llm_model_name,
+                )
+            )
+        else:
+            responder = None
+        application.state.conversation_responder = responder
         application.state.readiness_probe = InfrastructureReadinessProbe(
             settings, redis, storage
         )
