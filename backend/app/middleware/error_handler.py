@@ -61,13 +61,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(PermissionError)
     async def handle_permission_error(request: Request, exc: PermissionError) -> JSONResponse:
-        del exc
+        # Ghi log lý do để 403 trace được từ phía server (message không chứa nội bộ).
+        logger.info("ACCESS_DENIED", path=request.url.path, reason=str(exc))
         return _response(
             request,
             status=403,
             code="ACCESS_DENIED",
             message="You do not have permission to access this resource.",
-            details={},
+            details={"reason": str(exc)},
         )
 
     @app.exception_handler(LookupError)

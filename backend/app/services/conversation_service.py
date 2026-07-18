@@ -320,9 +320,13 @@ class ConversationService:
         route["attachment_ids"] = normalized_attachment_ids
 
         protected_analysis_routes = {"SINGLE_AGENT", "ORCHESTRATED"}
+        # Tin nhắn kèm hồ sơ đi đường đọc-tài-liệu (highlight) của responder,
+        # không chạy phân tích sâu — guard phân công khách hàng chỉ áp cho
+        # yêu cầu phân tích không kèm tài liệu.
         if (
             self._responder is not None
             and str(route.get("route_type")) in protected_analysis_routes
+            and not normalized_attachment_ids
         ):
             require_permission(principal, "loan:analyze")
             if self._processing_guard is None:
