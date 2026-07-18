@@ -61,7 +61,11 @@ class CustomerRepository:
             """,
             {"party_id": party_id, "display_name": DRAFT_CUSTOMER_NAME},
         )
-        row = await execute_returning(
+        # KHÔNG dùng RETURNING: SELECT policy của customer tự tra lại bảng bằng
+        # hàm STABLE nên không thấy row đang chèn trong cùng câu lệnh — RETURNING
+        # sẽ luôn bị RLS chặn. SELECT lại bằng câu lệnh riêng thì qua bình thường
+        # (nhân viên là relationship manager + cùng chi nhánh).
+        await fetch_one(
             self.session,
             """
             INSERT INTO customer.customer (
@@ -72,7 +76,7 @@ class CustomerRepository:
                 :customer_id, :party_id, :cif, 'MASS', :branch_id,
                 :employee_id, CURRENT_DATE, 'PENDING', 'UNRATED',
                 CURRENT_DATE, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1
-            ) RETURNING *
+            )
             """,
             {
                 "customer_id": customer_id,
@@ -82,6 +86,7 @@ class CustomerRepository:
                 "employee_id": employee_id,
             },
         )
+        row = await self.get(customer_id)
         if row is None:
             raise RuntimeError("Draft customer creation failed")
         return row
