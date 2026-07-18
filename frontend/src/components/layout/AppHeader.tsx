@@ -14,6 +14,7 @@ import {
   PlusOutlined,
   ShareAltOutlined,
 } from '@ant-design/icons';
+import { logout } from '@/auth/keycloak';
 import { SHBLogo } from '@/components/common/SHBLogo';
 import { StatusBadge } from '@/components/common/StatusBadge';
 import { UserAvatar } from '@/components/common/UserAvatar';
@@ -180,8 +181,11 @@ export function AppHeader({
               { key: 'profile', label: 'Hồ sơ của tôi' },
               { key: 'settings', label: 'Cài đặt tài khoản' },
               { type: 'divider' },
-              { key: 'logout', label: 'Đăng xuất' },
+              { key: 'logout', label: 'Đăng xuất', danger: true },
             ],
+            onClick: ({ key }) => {
+              if (key === 'logout') void logout();
+            },
           }}
           trigger={['click']}
           placement="bottomRight"

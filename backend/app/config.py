@@ -40,6 +40,11 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000"]
     )
 
+    # Agentic Core Engine (optional; unset keeps deep analysis on the single LLM).
+    agent_engine_url: str | None = None
+    agent_engine_business_id: str = "B001"
+    agent_engine_wait_seconds: int = Field(default=90, ge=10, le=570)
+
     # Rule-based account gate (all optional; an empty value disables that rule).
     login_rules_deny_usernames: str = ""
     login_rules_allow_username_patterns: str = ""

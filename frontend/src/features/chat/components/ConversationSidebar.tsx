@@ -15,6 +15,7 @@ import {
   SearchOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
+import { logout } from '@/auth/keycloak';
 import { SHBLogo } from '@/components/common/SHBLogo';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { EmptyState } from '@/components/common/EmptyState';
@@ -332,8 +333,11 @@ export function ConversationSidebar({
               { key: 'profile', label: 'Hồ sơ của tôi' },
               { key: 'settings', label: 'Cài đặt tài khoản' },
               { type: 'divider' },
-              { key: 'logout', label: 'Đăng xuất' },
+              { key: 'logout', label: 'Đăng xuất', danger: true },
             ],
+            onClick: ({ key }) => {
+              if (key === 'logout') void logout();
+            },
           }}
           trigger={['click']}
           placement="topRight"

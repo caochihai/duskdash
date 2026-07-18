@@ -74,6 +74,90 @@ async def test_llm_failure_returns_degraded_reply_instead_of_raising() -> None:
     assert reply.content
 
 
+class _StubEngine:
+    def __init__(self) -> None:
+        self.case = {
+            "state": "Pending Approval",
+            "package": {
+                "recommendation": "Đồng ý có điều kiện",
+                "proposed_limit": 4_200_000_000.0,
+                "plan_version": 2,
+                "conditions": ["Bổ sung BCTC quý gần nhất"],
+                "verdicts": [
+                    {"agent": "credit", "decision": "approve", "summary": "DSCR đạt"},
+                    {"agent": "validation", "decision": "flag", "summary": "LTV vượt trần"},
+                ],
+                "trace_summary": ["Planner sinh DAG 5 task"],
+            },
+        }
+
+    async def create_case(self, request, documents=None, submitted_by="platform"):
+        self.request = request
+        return "case_test_1"
+
+    async def run(self, case_id):
+        return None
+
+    async def wait_final(self, case_id, timeout_s=90):
+        return "Pending Approval"
+
+    async def get_case(self, case_id):
+        return self.case
+
+
+@pytest.mark.asyncio
+async def test_orchestrated_route_uses_agent_engine() -> None:
+    llm = _StubLLM()
+    engine = _StubEngine()
+    responder = LLMConversationResponder(llm, engine=engine)
+    reply = await responder.respond(
+        principal=_principal(),
+        conversation={},
+        message="Phân tích khoản vay của khách hàng này",
+        route={"route_type": "ORCHESTRATED", "intent": "LOAN_ANALYSIS"},
+    )
+    assert llm.calls == 0
+    assert reply.metadata["engine"] == "agent_engine"
+    assert reply.metadata["engine_case_id"] == "case_test_1"
+    assert "Đồng ý có điều kiện" in reply.content
+    assert "credit" in reply.content and "validation" in reply.content
+    assert "4,200,000,000" in reply.content
+
+
+@pytest.mark.asyncio
+async def test_direct_route_never_touches_engine() -> None:
+    class _ExplodingEngine:
+        async def create_case(self, *a, **k):
+            raise AssertionError("engine must not be called for DIRECT routes")
+
+    responder = LLMConversationResponder(_StubLLM(), engine=_ExplodingEngine())
+    reply = await responder.respond(
+        principal=_principal(),
+        conversation={},
+        message="số dư của khách?",
+        route={"route_type": "DIRECT", "intent": "DIRECT_QUERY"},
+    )
+    assert reply.metadata.get("engine") is None
+
+
+@pytest.mark.asyncio
+async def test_engine_failure_falls_back_to_single_llm() -> None:
+    class _BrokenEngine:
+        async def create_case(self, *a, **k):
+            raise RuntimeError("engine down")
+
+    llm = _StubLLM()
+    responder = LLMConversationResponder(llm, engine=_BrokenEngine())
+    reply = await responder.respond(
+        principal=_principal(),
+        conversation={},
+        message="Phân tích khoản vay",
+        route={"route_type": "ORCHESTRATED", "intent": "LOAN_ANALYSIS"},
+    )
+    assert llm.calls == 1
+    assert reply.metadata.get("engine") is None
+
+
 @pytest.mark.asyncio
 async def test_successful_reply_carries_model_metadata() -> None:
     responder = LLMConversationResponder(_StubLLM())

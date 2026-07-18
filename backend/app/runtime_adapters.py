@@ -21,6 +21,7 @@ from app.db import session as db_session
 from app.db.rls_context import set_rls_context
 from app.repositories.identity_repository import IdentityRepository
 from app.providers.llm.openai_compat import OpenAICompatLLMProvider
+from app.services.agent_engine_client import AgentEngineClient
 from app.services.llm_conversation_responder import LLMConversationResponder
 from app.services.mock_conversation_responder import MockConversationResponder
 from app.storage.minio_storage import Boto3MinioStorage
@@ -300,13 +301,21 @@ class DefaultRuntimeAdapters:
             and settings.llm_api_url
             and settings.llm_api_key is not None
         ):
+            engine = (
+                AgentEngineClient(settings.agent_engine_url)
+                if settings.agent_engine_url
+                else None
+            )
             responder = LLMConversationResponder(
                 OpenAICompatLLMProvider(
                     provider=settings.llm_provider,
                     api_url=settings.llm_api_url,
                     api_key=settings.llm_api_key.get_secret_value(),
                     model_name=settings.llm_model_name,
-                )
+                ),
+                engine=engine,
+                engine_business_id=settings.agent_engine_business_id,
+                engine_wait_seconds=settings.agent_engine_wait_seconds,
             )
         else:
             responder = None

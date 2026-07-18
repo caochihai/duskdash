@@ -64,15 +64,81 @@ def _optional_uuid(value: Any) -> UUID | None:
     return None
 
 
+_DEEP_ANALYSIS_ROUTES = {"ORCHESTRATED", "SINGLE_AGENT"}
+
+_VERDICT_LABEL = {
+    "approve": "ĐỒNG Ý",
+    "reject": "TỪ CHỐI",
+    "need_more_info": "CẦN BỔ SUNG",
+    "flag": "CẢNH BÁO",
+    "pass": "ĐẠT",
+}
+
+
+def compose_engine_reply(case: Mapping[str, Any]) -> str:
+    """Dựng câu trả lời tiếng Việt từ ApprovalPackage của agent engine."""
+    package = case.get("package") or {}
+    state = str(case.get("state") or "")
+    lines: list[str] = []
+
+    recommendation = package.get("recommendation")
+    if recommendation:
+        lines.append(f"**Kết luận của hội đồng agent:** {recommendation}")
+    if package.get("proposed_limit") is not None:
+        lines.append(f"**Hạn mức đề xuất:** {package['proposed_limit']:,.0f} VND")
+    if state:
+        lines.append(f"**Trạng thái hồ sơ:** {state}")
+
+    verdicts = package.get("verdicts") or []
+    if verdicts:
+        lines.append("\n**Ý kiến từng chuyên gia:**")
+        for verdict in verdicts:
+            decision = _VERDICT_LABEL.get(
+                str(verdict.get("decision", "")).lower(), verdict.get("decision", "?")
+            )
+            summary = verdict.get("summary", "")
+            lines.append(f"- {verdict.get('agent', '?')}: {decision} — {summary}")
+
+    conditions = package.get("conditions") or []
+    if conditions:
+        lines.append("\n**Điều kiện kèm theo:**")
+        lines.extend(f"- {condition}" for condition in conditions)
+
+    trace = package.get("trace_summary") or []
+    if trace:
+        lines.append("\n**Tóm tắt quá trình phân tích:**")
+        lines.extend(f"- {step}" for step in trace[:8])
+
+    if not lines:
+        lines.append(
+            f"Phân tích đa agent đã kết thúc ở trạng thái {state or 'không xác định'} "
+            "nhưng chưa có gói phê duyệt."
+        )
+    return "\n".join(lines)
+
+
 class LLMConversationResponder:
     """Drop-in thay cho MockConversationResponder khi có LLM provider thật.
 
     Dữ liệu ngữ cảnh được đọc qua đúng lớp repository + RLS của nhân viên đang
     hỏi, nên câu trả lời không bao giờ vượt quá phạm vi truy cập của họ.
+    Câu hỏi phân tích sâu (route ORCHESTRATED/SINGLE_AGENT) được chuyển cho
+    Agentic Core Engine — planner + 5 agent chuyên gia A2A — nếu được cấu hình.
     """
 
-    def __init__(self, llm: LLMProvider, *, transaction_page_size: int = 15) -> None:
+    def __init__(
+        self,
+        llm: LLMProvider,
+        *,
+        engine: Any | None = None,
+        engine_business_id: str = "B001",
+        engine_wait_seconds: int = 90,
+        transaction_page_size: int = 15,
+    ) -> None:
         self._llm = llm
+        self._engine = engine
+        self._engine_business_id = engine_business_id
+        self._engine_wait_seconds = engine_wait_seconds
         self._transaction_page_size = transaction_page_size
 
     async def respond(
@@ -107,6 +173,19 @@ class LLMConversationResponder:
             )
 
         context = await self._collect_context(principal, conversation, route)
+
+        if route_type in _DEEP_ANALYSIS_ROUTES and self._engine is not None:
+            engine_reply = await self._respond_with_engine(
+                principal=principal,
+                message=message,
+                route=route,
+                context=context,
+                route_type=route_type,
+                complexity_level=complexity_level,
+                base_metadata=base_metadata,
+            )
+            if engine_reply is not None:
+                return engine_reply
         user_prompt = (
             f"CÂU HỎI CỦA CÁN BỘ:\n{message}\n\n"
             f"DỮ LIỆU (JSON, đã lọc theo quyền truy cập):\n{_jsonable(context)}"
@@ -135,6 +214,85 @@ class LLMConversationResponder:
                 **base_metadata,
                 "citations": answer.citations,
                 "data_sources": sorted(context.keys()),
+            },
+        )
+
+    async def _respond_with_engine(
+        self,
+        *,
+        principal: PrincipalLike,
+        message: str,
+        route: Mapping[str, Any],
+        context: Mapping[str, Any],
+        route_type: str,
+        complexity_level: int | None,
+        base_metadata: Mapping[str, Any],
+    ) -> ConversationReply | None:
+        """Chạy phân tích sâu qua Agentic Core Engine; trả None để rơi về LLM đơn."""
+        loans = context.get("loan_applications") or []
+        loan: Mapping[str, Any] = loans[0] if loans else {}
+        amount = None
+        for field in ("requested_amount", "amount", "loan_amount", "approved_amount"):
+            if loan.get(field) is not None:
+                amount = float(loan[field])
+                break
+        term_months = None
+        for field in ("term_months", "tenor_months", "requested_term_months"):
+            if loan.get(field) is not None:
+                term_months = int(loan[field])
+                break
+        request = {
+            "business_id": self._engine_business_id,
+            "amount": amount if amount is not None else 1_000_000_000.0,
+            "term_months": term_months if term_months is not None else 12,
+            "purpose": str(loan.get("purpose") or message)[:300],
+        }
+
+        try:
+            case_id = await self._engine.create_case(
+                request, submitted_by=str(principal.employee_id)
+            )
+            await self._engine.run(case_id)
+            try:
+                await self._engine.wait_final(case_id, timeout_s=self._engine_wait_seconds)
+            except TimeoutError:
+                case = await self._engine.get_case(case_id)
+                return ConversationReply(
+                    content=(
+                        "Hội đồng agent đang phân tích hồ sơ (planner đã sinh kế hoạch, "
+                        "các chuyên gia đang làm việc). Mã hồ sơ: "
+                        f"`{case_id}` — trạng thái hiện tại: {case.get('state', '?')}. "
+                        "Hỏi lại sau ít phút để nhận kết quả đầy đủ."
+                    ),
+                    route_type=route_type,
+                    complexity_level=complexity_level,
+                    metadata={
+                        **base_metadata,
+                        "engine": "agent_engine",
+                        "engine_case_id": case_id,
+                        "engine_state": case.get("state"),
+                    },
+                )
+            case = await self._engine.get_case(case_id)
+        except Exception:
+            logger.exception("AGENT_ENGINE_FAILED")
+            return None
+
+        package = case.get("package") or {}
+        return ConversationReply(
+            content=compose_engine_reply(case),
+            route_type=route_type,
+            complexity_level=complexity_level,
+            metadata={
+                **base_metadata,
+                "engine": "agent_engine",
+                "engine_case_id": case_id,
+                "engine_state": case.get("state"),
+                "engine_request": request,
+                "plan_version": package.get("plan_version"),
+                "policy_version": package.get("policy_version"),
+                "verdicts": package.get("verdicts") or [],
+                "trace_summary": package.get("trace_summary") or [],
             },
         )
 
