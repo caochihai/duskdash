@@ -7,7 +7,7 @@ fixtures, not database seed rows, and must never be presented as customer facts.
 from __future__ import annotations
 
 from decimal import Decimal
-from enum import StrEnum
+from app.compat import StrEnum
 from typing import Any, Literal
 from uuid import UUID, uuid5
 

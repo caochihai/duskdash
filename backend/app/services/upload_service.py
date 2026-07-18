@@ -5,7 +5,8 @@ from __future__ import annotations
 import base64
 import re
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+from app.compat import UTC
 from pathlib import PurePath
 from typing import Any, Protocol
 from uuid import UUID, uuid4

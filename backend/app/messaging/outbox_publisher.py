@@ -7,7 +7,8 @@ import re
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from typing import Any, Protocol
 from uuid import UUID
 

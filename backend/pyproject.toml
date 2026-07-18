@@ -2,7 +2,7 @@
 name = "bank-ai-backend"
 version = "0.1.0"
 description = "AI Credit Intelligence Workbench - Backend API"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = { text = "Proprietary" }
 
 dependencies = [

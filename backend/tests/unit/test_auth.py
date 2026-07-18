@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import base64
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+from app.compat import UTC
 from typing import Any
 from uuid import uuid4
 

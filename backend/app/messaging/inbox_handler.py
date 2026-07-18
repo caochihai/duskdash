@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import re
 from collections.abc import Awaitable, Callable, Mapping
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from typing import Any, Protocol
 from uuid import UUID, uuid4
 

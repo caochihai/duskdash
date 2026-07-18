@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Iterable
 from datetime import datetime
-from enum import StrEnum
+from app.compat import StrEnum
 from typing import Any
 from uuid import UUID
 
