@@ -333,6 +333,7 @@ class LLMConversationResponder:
                 "images_analyzed": len(images),
                 "extracted_customer_name": result.extracted_customer_name,
                 "customer_renamed_from_document": renamed_customer,
+                "suggested_questions": result.suggested_questions,
             },
         )
 

@@ -295,8 +295,14 @@ class ConversationService:
         assignment_lease_token: str | None = None,
     ) -> Mapping[str, Any]:
         clean_content = content.strip()
-        if not clean_content or len(clean_content) > 8000:
+        if len(clean_content) > 8000:
             raise ValueError("Message must contain 1 to 8000 characters")
+        if not clean_content:
+            if not attachment_ids:
+                raise ValueError("Message must contain 1 to 8000 characters")
+            # Gửi hồ sơ không kèm câu hỏi -> responder tự phân tích và
+            # đề xuất câu hỏi tiếp theo cho cán bộ.
+            clean_content = "(Gửi hồ sơ đính kèm — nhờ SH-AI phân tích và gợi ý)"
         conversation = await self.get(principal, conversation_id)
         if str(conversation.get("status", "")).upper() == "CLOSED":
             raise ValueError("Cannot add a message to a closed conversation")

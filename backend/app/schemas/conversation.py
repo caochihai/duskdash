@@ -29,7 +29,9 @@ class ConversationUpdateRequest(APIModel):
 
 
 class ConversationMessageRequest(APIModel):
-    content: str = Field(min_length=1, max_length=8000)
+    # Cho phép rỗng KHI có đính kèm: service sẽ thay bằng placeholder và
+    # responder tự phân tích hồ sơ + sinh câu hỏi gợi ý.
+    content: str = Field(min_length=0, max_length=8000)
     attachment_ids: list[UUID] = Field(default_factory=list, max_length=20)
 
 

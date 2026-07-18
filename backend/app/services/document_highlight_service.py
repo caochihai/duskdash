@@ -46,6 +46,9 @@ _SYSTEM_PROMPT = (
     "định vị được thì để bbox_2d = null.\n"
     "Nếu hồ sơ ghi rõ họ tên khách hàng, điền vào extracted_customer_name "
     "(đúng nguyên văn, không suy đoán).\n"
+    "Luôn đề xuất 3-5 câu hỏi tiếp theo trong suggested_questions — những câu "
+    "cán bộ NÊN hỏi dựa trên nội dung hồ sơ (đặc biệt quan trọng khi cán bộ "
+    "gửi hồ sơ mà chưa kèm câu hỏi: hãy chủ động tóm tắt và dẫn dắt).\n"
     "TUYỆT ĐỐI không bịa nội dung không có trong ảnh."
 )
 
@@ -66,6 +69,11 @@ class HighlightResult(BaseModel):
         default=None,
         max_length=200,
         description="Họ tên đầy đủ của khách hàng đọc được từ hồ sơ (null nếu không có)",
+    )
+    suggested_questions: list[str] = Field(
+        default_factory=list,
+        max_length=5,
+        description="3-5 câu hỏi tiếp theo cán bộ nên hỏi dựa trên nội dung hồ sơ",
     )
 
 
@@ -91,6 +99,13 @@ def render_highlight_markdown(result: HighlightResult, links: list[AnnotatedImag
         lines.append("**🖼 Ảnh hồ sơ đã đánh dấu vùng cần chú ý:**")
         for index, link in enumerate(links, start=1):
             lines.append(f"- [Hồ sơ đã highlight — trang {index}]({link.url})")
+    if result.suggested_questions:
+        lines.append("")
+        lines.append("**💡 Gợi ý câu hỏi tiếp theo:**")
+        lines.extend(
+            f"{index}. {question}"
+            for index, question in enumerate(result.suggested_questions[:5], start=1)
+        )
     return "\n".join(lines)
 
 
