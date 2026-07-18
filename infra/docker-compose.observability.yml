@@ -1,0 +1,101 @@
+services:
+  postgres-exporter:
+    image: ${POSTGRES_EXPORTER_IMAGE:?Set POSTGRES_EXPORTER_IMAGE via versions.env}
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATA_SOURCE_NAME: >-
+        postgresql://${POSTGRES_READONLY_USER:-bank_readonly}:${POSTGRES_READONLY_PASSWORD:?Generate .env.local}@postgres:5432/bank_ai?sslmode=disable
+      PG_EXPORTER_EXTEND_QUERY_PATH: /etc/postgres_exporter/queries.yaml
+    volumes:
+      - ./monitoring/postgres-exporter-queries.yaml:/etc/postgres_exporter/queries.yaml:ro
+    networks:
+      - bank-data
+    security_opt:
+      - no-new-privileges:true
+
+  redis-exporter:
+    image: ${REDIS_EXPORTER_IMAGE:?Set REDIS_EXPORTER_IMAGE via versions.env}
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      REDIS_ADDR: redis://redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Generate .env.local}
+    networks:
+      - bank-application
+    security_opt:
+      - no-new-privileges:true
+
+  kafka-exporter:
+    image: ${KAFKA_EXPORTER_IMAGE:?Set KAFKA_EXPORTER_IMAGE via versions.env}
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      kafka:
+        condition: service_healthy
+    command:
+      - --kafka.server=kafka:9092
+      - --sasl.enabled
+      - --sasl.username=${KAFKA_ADMIN_USERNAME:-kafka-admin}
+      - --sasl.password=${KAFKA_ADMIN_PASSWORD:?Generate .env.local}
+      - --sasl.mechanism=scram-sha512
+      - --topic.filter=bank\..*
+    networks:
+      - bank-application
+    security_opt:
+      - no-new-privileges:true
+
+  prometheus:
+    image: ${PROMETHEUS_IMAGE:?Set PROMETHEUS_IMAGE via versions.env}
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      - postgres-exporter
+      - redis-exporter
+      - kafka-exporter
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --web.enable-lifecycle
+    ports:
+      - 127.0.0.1:9090:9090
+    volumes:
+      - prometheus_data:/prometheus
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - bank-application
+      - bank-data
+      - bank-edge
+    security_opt:
+      - no-new-privileges:true
+
+  grafana:
+    image: ${GRAFANA_IMAGE:?Set GRAFANA_IMAGE via versions.env}
+    profiles: [observability]
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?Generate .env.local}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_SERVER_HTTP_PORT: 3000
+    ports:
+      - 127.0.0.1:3001:3000
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks:
+      - bank-edge
+      - bank-application
+    security_opt:
+      - no-new-privileges:true

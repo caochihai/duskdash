@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bank-ai.example.local/schemas/document-events.v1.json",
+  "title": "Bank AI document commands and events v1",
+  "allOf": [
+    {
+      "$ref": "event-envelope.v1.json"
+    },
+    {
+      "properties": {
+        "event_type": {
+          "enum": [
+            "document.processing.requested",
+            "document.security-scan.requested",
+            "document.ocr.requested",
+            "document.classification.requested",
+            "document.extraction.requested",
+            "document.embedding.requested",
+            "document.processing.started",
+            "document.security-scan.completed",
+            "document.ocr.completed",
+            "document.classification.completed",
+            "document.extraction.completed",
+            "document.embedding.completed",
+            "document.processing.completed",
+            "document.processing.failed"
+          ]
+        },
+        "resource": {
+          "properties": {
+            "type": {
+              "const": "DOCUMENT_VERSION"
+            }
+          }
+        },
+        "metadata": {
+          "properties": {
+            "schema": {
+              "pattern": "^document\\.[a-z0-9.-]+\\.v1$"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
+

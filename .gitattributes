@@ -1,0 +1,8 @@
+# Shell scripts and container-mounted configs must stay LF —
+# they run inside Linux containers where CRLF breaks bash/parsers.
+*.sh text eol=lf
+*.properties text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.sql text eol=lf
+*.json text eol=lf

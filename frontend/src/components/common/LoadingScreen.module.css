@@ -1,0 +1,41 @@
+.screen {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  background: radial-gradient(circle at 50% 42%, rgba(243, 112, 33, 0.09), transparent 46%),
+    linear-gradient(180deg, var(--shb-warm-white) 0%, var(--shb-canvas) 100%);
+}
+
+.inline {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  min-height: 320px;
+  background: transparent;
+}
+
+.message {
+  font-size: 14px;
+  color: var(--shb-text-secondary);
+  letter-spacing: 0.01em;
+}
+
+.track {
+  width: 132px;
+  height: 3px;
+  border-radius: var(--shb-radius-pill);
+  background: var(--shb-orange-100);
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  width: 40%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--shb-orange-400), var(--shb-orange-500));
+}

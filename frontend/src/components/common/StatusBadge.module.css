@@ -1,0 +1,52 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: var(--shb-radius-pill);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.online {
+  background: var(--shb-success);
+  background: rgba(21, 128, 93, 0.09);
+  color: var(--shb-success);
+}
+
+.busy {
+  background: rgba(217, 119, 6, 0.1);
+  color: var(--shb-warning);
+}
+
+.offline {
+  background: rgba(102, 112, 133, 0.1);
+  color: var(--shb-text-secondary);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* Nhịp thở nhẹ báo hiệu trạng thái hoạt động. */
+.dotPulse {
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.82);
+  }
+}

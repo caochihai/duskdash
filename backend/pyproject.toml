@@ -1,0 +1,130 @@
+[project]
+name = "bank-ai-backend"
+version = "0.1.0"
+description = "AI Credit Intelligence Workbench - Backend API"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+
+dependencies = [
+    "fastapi[standard]>=0.115.0",
+    "pydantic>=2.10.0",
+    "pydantic-settings>=2.7.0",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30.0",
+    "aiokafka>=0.12.0",
+    "redis>=5.2.0",
+    "boto3>=1.36.0",
+    "PyJWT>=2.10.0",
+    "cryptography>=44.0.0",
+    "structlog>=24.4.0",
+    "httpx>=0.28.0",
+    "uvicorn>=0.34.0",
+    "python-multipart>=0.0.20",
+    "pgvector>=0.3.6",
+    "pillow>=11.0.0",
+]
+
+[project.scripts]
+bank-api = "app.main:run"
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-asyncio>=0.24.0",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.0",
+    "mypy>=1.13.0",
+    "respx>=0.22.0",
+    "factory-boy>=3.3.0",
+    "types-setuptools>=75.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=75.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+src = ["app", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "N",     # pep8-naming
+    "UP",    # pyupgrade
+    "B",     # flake8-bugbear
+    "S",     # flake8-bandit
+    "A",     # flake8-builtins
+    "C4",    # flake8-comprehensions
+    "DTZ",   # flake8-datetimez
+    "T20",   # flake8-print
+    "RET",   # flake8-return
+    "SIM",   # flake8-simplify
+    "TCH",   # flake8-type-checking
+    "RUF",   # ruff-specific rules
+]
+ignore = [
+    "S101",  # allow assert in tests
+    "B008",  # allow Depends() in function args
+    "A003",  # allow shadowing builtins on models (id, type)
+    "RUF012", # mutable class variable annotations
+    "TCH",    # FastAPI/Pydantic resolve annotations at runtime
+    "UP046",  # Keep TypeVar generics compatible with Pydantic runtime models
+    "UP047",  # Keep named TypeVars for API helper readability
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "S106", "S105"]
+"app/logging.py" = ["A005"]
+"app/repositories/loan_repository.py" = ["S608"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "aiokafka.*",
+    "boto3.*",
+    "botocore.*",
+    "redis.*",
+    "pgvector.*",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+markers = [
+    "unit: Unit tests (no external dependencies)",
+    "integration: Integration tests (require running services)",
+    "contract: Contract tests (schema validation)",
+]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+branch = true
+source = ["app"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true

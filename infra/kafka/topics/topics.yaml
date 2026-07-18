@@ -1,0 +1,80 @@
+version: 1
+defaults:
+  partitions: 3
+  replication_factor: 1
+  cleanup_policy: delete
+  max_message_bytes: 1048576
+topics:
+  - name: bank.document.commands.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 604800000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.document.events.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 2592000000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.analysis.commands.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 604800000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.analysis.events.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 2592000000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.report.commands.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 604800000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.report.events.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 2592000000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.notification.events.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 259200000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.job-status.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 604800000
+    cleanup_policy: compact,delete
+    max_message_bytes: 1048576
+  - name: bank.audit.events.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 2592000000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.retry.1m.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 604800000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.retry.10m.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 604800000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+  - name: bank.dead-letter.v1
+    partitions: 3
+    replication_factor: 1
+    retention_ms: 2592000000
+    cleanup_policy: delete
+    max_message_bytes: 1048576
+

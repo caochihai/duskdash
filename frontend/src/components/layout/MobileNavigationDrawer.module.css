@@ -1,0 +1,8 @@
+.drawerBody {
+  height: 100%;
+}
+
+/* Drawer body dùng lại nguyên ConversationSidebar -> bỏ padding mặc định. */
+.drawerBody :global(.ant-drawer-body) {
+  padding: 0;
+}

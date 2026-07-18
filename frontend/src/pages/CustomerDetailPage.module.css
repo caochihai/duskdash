@@ -1,0 +1,290 @@
+.page {
+  min-height: 100dvh;
+  background: var(--shb-canvas);
+  padding-bottom: 48px;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--shb-border);
+}
+
+.container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+/* Khối định danh */
+.identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 20px 22px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-card);
+  background: linear-gradient(180deg, var(--shb-orange-50) 0%, var(--shb-surface) 70%);
+  margin-bottom: 20px;
+}
+
+.identityBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
+
+.name {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  color: var(--shb-navy-800);
+  line-height: 1.25;
+}
+
+.code {
+  font-size: 13px;
+  color: var(--shb-text-muted);
+  letter-spacing: 0.02em;
+}
+
+.tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+
+.identityStats {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.statLabel {
+  font-size: 11.5px;
+  color: var(--shb-text-muted);
+}
+
+.statValue {
+  font-size: 17px;
+  font-weight: 650;
+  color: var(--shb-navy-800);
+}
+
+/* Bảng chỉ số */
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px dashed var(--shb-border);
+}
+
+.row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.rowLabel {
+  font-size: 13.5px;
+  color: var(--shb-text-secondary);
+}
+
+.rowValue {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--shb-navy-800);
+  text-align: right;
+}
+
+.meter {
+  height: 7px;
+  border-radius: var(--shb-radius-pill);
+  background: var(--shb-orange-50);
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.meterFill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 300ms ease;
+}
+
+.meterNote {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--shb-text-muted);
+}
+
+.maskNote {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: var(--shb-radius-md);
+  background: var(--shb-canvas);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--shb-text-secondary);
+}
+
+.maskIcon {
+  color: var(--shb-text-muted);
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Danh sách hồ sơ vay */
+.loanList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.loanCard {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-lg);
+  background: var(--shb-surface);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.loanCard:hover {
+  border-color: var(--shb-orange-200);
+  box-shadow: var(--shb-shadow-sm);
+}
+
+.loanMain {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+
+.loanTop {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+}
+
+.loanCode {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--shb-text-muted);
+}
+
+.loanProduct {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--shb-navy-800);
+  line-height: 1.35;
+}
+
+.loanMeta {
+  font-size: 12.5px;
+  color: var(--shb-text-secondary);
+}
+
+.loanAmount {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.loanAmountValue {
+  font-size: 16px;
+  font-weight: 680;
+  color: var(--shb-navy-800);
+  letter-spacing: -0.01em;
+}
+
+.loanAmountLabel {
+  font-size: 11px;
+  color: var(--shb-text-muted);
+}
+
+.loanAction {
+  flex-shrink: 0;
+}
+
+/* Timeline lịch sử */
+.emptyWrap {
+  padding: 40px 0;
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding: 16px 12px;
+  }
+
+  .header {
+    padding: 12px 14px;
+  }
+
+  .name {
+    font-size: 19px;
+  }
+
+  .identityStats {
+    gap: 18px;
+  }
+
+  .loanCard {
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+
+  .loanAmount {
+    align-items: flex-start;
+  }
+
+  .loanAction {
+    width: 100%;
+  }
+
+  .loanAction :global(.ant-btn) {
+    width: 100%;
+  }
+}
