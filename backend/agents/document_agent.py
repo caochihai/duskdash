@@ -36,8 +36,10 @@ DOC_SCHEMAS = {
             '"business_lines": [str], "registered_capital": number}',
     "bctc": '{"year": int, "revenue": number, "ebitda": number, "total_debt": number, '
             '"equity": number}',
-    "sao_ke": '{"account_number": str, "period_months": int, "total_inflow": number, '
-              '"avg_monthly_inflow": number}',
+    # Sao kê: chỉ yêu cầu model đọc TỪNG DÒNG giao dịch — tổng/bình quân do CODE tính
+    # (benchmark: VLM đọc số từng dòng 6/6 đúng nhưng 2/3 model tự cộng tổng SAI)
+    "sao_ke": '{"account_number": str, "period_months": int, '
+              '"transactions": [{"date": str, "amount": number}]}',
     "cccd": '{"full_name": str, "id_number": str, "date_of_birth": str}',
     "so_do": '{"owner_name": str, "address": str, "area_m2": number, "certificate_no": str}',
 }
@@ -46,18 +48,42 @@ DOC_SCHEMAS = {
 _extractions: dict[str, dict] = {}
 
 
+def _derive_saoke_numbers(data: dict) -> dict:
+    """Tổng/bình quân dòng tiền TÍNH BẰNG CODE từ line items — không tin LLM cộng số."""
+    txns = data.get("transactions") or []
+    amounts = []
+    for t in txns:
+        try:
+            amounts.append(float(t.get("amount", 0) or 0))
+        except (TypeError, ValueError):
+            continue
+    if amounts:
+        total = sum(amounts)
+        months = data.get("period_months") or 12
+        data["total_inflow"] = total
+        data["avg_monthly_inflow"] = total / months
+        data["derived_by"] = "code"  # minh bạch trên dashboard/audit
+    return data
+
+
 async def _extract_one(doc: dict) -> tuple[str, dict]:
     dtype = doc.get("doc_type", "unknown")
     if "extracted" in doc:  # đã có dữ liệu cấu trúc (fixtures / đã trích xuất)
-        return dtype, doc["extracted"]
+        data = doc["extracted"]
+        if dtype == "sao_ke":
+            data = _derive_saoke_numbers(data)
+        return dtype, data
     if config.LLM_MODE in ("llm", "hybrid") and doc.get("image_path"):
         data = await llm.vision_extract(
             system=f"Bạn là chuyên viên nhập liệu ngân hàng. Trích xuất chính xác "
-                   f"thông tin từ tài liệu loại '{dtype}'. Trả về JSON đúng schema. "
+                   f"thông tin từ tài liệu loại '{dtype}'. Giữ nguyên dấu tiếng Việt. "
+                   f"Chỉ trả về JSON đúng schema, không giải thích. "
                    f"Trường không đọc được để null.",
             image_path=doc["image_path"],
             schema_hint=DOC_SCHEMAS.get(dtype, "{}"),
         )
+        if dtype == "sao_ke":
+            data = _derive_saoke_numbers(data)
         return dtype, data
     return dtype, {"error": "không có dữ liệu trích xuất (thiếu ảnh hoặc đang ở rules mode)"}
 
