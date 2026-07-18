@@ -83,13 +83,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ValueError)
     async def handle_value_error(request: Request, exc: ValueError) -> JSONResponse:
-        del exc
+        # ValueError trong service là thông điệp validation viết cho người dùng
+        # (không chứa nội bộ hệ thống) — trả về để client biết sai ở đâu.
         return _response(
             request,
             status=422,
             code="VALIDATION_FAILED",
             message="The request is invalid.",
-            details={},
+            details={"reason": str(exc)},
         )
 
     @app.exception_handler(TimeoutError)

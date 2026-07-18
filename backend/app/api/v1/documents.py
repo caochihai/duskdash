@@ -92,7 +92,10 @@ async def complete_upload(
             request_id=request_uuid(request),
         ),
     )
-    return UploadCompleteResponse.model_validate(row)
+    # Repository trả khoá chính là "id"; response contract dùng "upload_id".
+    payload = dict(row)
+    payload.setdefault("upload_id", payload.get("id"))
+    return UploadCompleteResponse.model_validate(payload)
 
 
 @documents_router.get("/{document_id}", response_model=DocumentResponse)
