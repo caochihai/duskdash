@@ -1,10 +1,19 @@
 # Scripts
 
-Put local development, testing, build, and deployment helper scripts here.
+PowerShell helpers for local development.
 
-Suggested future scripts:
+Start infrastructure, the backend API, and the frontend:
 
-- `setup.ps1`: Install project dependencies.
-- `dev.ps1`: Start local development services.
-- `test.ps1`: Run project tests.
-- `deploy.ps1`: Deploy the project.
+```powershell
+.\scripts\dev.ps1
+```
+
+On the first run, bootstrap migrations, seed data, Kafka, MinIO, and Keycloak:
+
+```powershell
+.\scripts\dev.ps1 -Bootstrap
+```
+
+Add `-Workers` to run the outbox publisher and all backend workers. The
+frontend stays in the foreground; press `Ctrl+C` to stop it. Docker volumes
+are preserved.

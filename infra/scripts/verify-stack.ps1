@@ -130,7 +130,7 @@ Test-Step 'Source configs contain no changeme placeholder' {
         $_.FullName -ne $envFile -and $_.Name -ne 'intructions.md' -and
         ($extensions -contains $_.Extension -or $_.Name -in @('Dockerfile', 'Makefile'))
     }
-    $hit = $files | Select-String -SimpleMatch -Pattern 'changeme' -List
+    $hit = $files | Select-String -SimpleMatch -Pattern ('change' + 'me') -List
     Assert-True ($null -eq $hit) 'changeme placeholder found in source config'
 }
 

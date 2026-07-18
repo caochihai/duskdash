@@ -1,202 +1,230 @@
-"""Application configuration using Pydantic Settings.
-
-Reads environment variables matching the infra connection contracts.
-Validates that production environments do not run with placeholder secrets,
-wildcard CORS, or missing JWT issuer/audience.
-"""
+"""Validated runtime configuration aligned with the infrastructure contracts."""
 
 from __future__ import annotations
 
 import re
-from typing import Any
+from functools import lru_cache
+from typing import Annotated, Any, Literal
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
+
+_PLACEHOLDER = re.compile(r"(?:<[^>]+>|change[_-]?me|placeholder|example|dummy)", re.IGNORECASE)
 
 
 class Settings(BaseSettings):
-    """Central application settings.
+    """Application settings.
 
-    Groups: App, Database, Redis, Kafka, MinIO, Keycloak/OIDC,
-    OCR, LLM, Embedding, Security, Logging.
+    Field names deliberately mirror ``infra/contracts/*.env.example``.  Local
+    development uses ``backend/.env.local``; the unrelated ``backend/.env`` is
+    never loaded by this application.
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=".env.local",
         env_file_encoding="utf-8",
+        env_ignore_empty=True,
         case_sensitive=False,
-        extra="ignore",
+        extra="forbid",
     )
 
-    # ── App ──────────────────────────────────────────────────────────────
-    app_name: str = Field(default="bank-ai-backend")
-    app_env: str = Field(default="development")
-    app_port: int = Field(default=8000)
-    app_cors_origins: list[str] = Field(default=["http://localhost:3000"])
-    app_debug: bool = Field(default=False)
-
-    # ── Database ─────────────────────────────────────────────────────────
-    database_url: str = Field(
-        default="postgresql+asyncpg://bank_app:changeme@localhost:5432/bank_ai",
+    # Application-only settings.
+    app_name: str = "bank-ai-backend"
+    app_env: Literal["development", "testing", "production"] = "development"
+    app_process_type: Literal["api", "worker", "publisher"] = "api"
+    app_host: str = "0.0.0.0"  # noqa: S104 - container bind address
+    app_port: int = Field(default=8000, ge=1, le=65535)
+    app_debug: bool = False
+    app_cors_origins: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: ["http://localhost:3000"]
     )
-    database_pool_size: int = Field(default=20)
-    database_pool_max_overflow: int = Field(default=10)
-    database_pool_timeout: int = Field(default=30)
-    database_echo: bool = Field(default=False)
 
-    # ── Redis ────────────────────────────────────────────────────────────
-    redis_url: str = Field(
-        default="redis://:changeme@localhost:6379/0",
-    )
-    redis_key_prefix: str = Field(default="bank-ai")
-    redis_socket_timeout: float = Field(default=5.0)
+    # PostgreSQL contract.
+    database_host: str = "localhost"
+    database_port: int = Field(default=5432, ge=1, le=65535)
+    database_name: str = "bank_ai"
+    database_user: str = "bank_app"
+    database_password: SecretStr | None = None
+    database_url: SecretStr
+    database_pool_size: int = Field(default=20, ge=1, le=100)
+    database_pool_max_overflow: int = Field(default=10, ge=0, le=100)
+    database_pool_timeout: int = Field(default=30, ge=1, le=300)
+    database_echo: bool = False
 
-    # ── Kafka ────────────────────────────────────────────────────────────
-    kafka_bootstrap_servers: str = Field(default="localhost:29092")
-    kafka_security_protocol: str = Field(default="SASL_PLAINTEXT")
-    kafka_sasl_mechanism: str = Field(default="SCRAM-SHA-512")
-    kafka_sasl_username: str = Field(default="bank-api")
-    kafka_sasl_password: SecretStr = Field(default=SecretStr("changeme"))
-    kafka_client_id: str = Field(default="bank-api")
-    kafka_enable_auto_commit: bool = Field(default=False)
-    kafka_auto_offset_reset: str = Field(default="earliest")
+    # Kafka contract.
+    kafka_bootstrap_servers: str = "localhost:29092"
+    kafka_external_bootstrap_servers: str = "localhost:29092"
+    kafka_security_protocol: Literal["SASL_PLAINTEXT", "SASL_SSL"] = "SASL_PLAINTEXT"
+    kafka_sasl_mechanism: Literal["SCRAM-SHA-512"] = "SCRAM-SHA-512"
+    kafka_sasl_username: str = "bank-api"
+    kafka_sasl_password: SecretStr
+    kafka_client_id: str = "bank-api"
+    kafka_consumer_group: str | None = None
+    kafka_enable_auto_commit: bool = False
+    kafka_auto_offset_reset: Literal["earliest", "latest"] = "earliest"
 
-    # ── MinIO ────────────────────────────────────────────────────────────
-    minio_endpoint: str = Field(default="localhost:9000")
-    minio_access_key: str = Field(default="bank-api")
-    minio_secret_key: SecretStr = Field(default=SecretStr("changeme"))
-    minio_secure: bool = Field(default=False)
-    minio_presigned_ttl_seconds: int = Field(default=600)
-    minio_public_endpoint: str = Field(default="http://localhost:9000")
+    # Redis contract.
+    redis_host: str = "localhost"
+    redis_port: int = Field(default=6379, ge=1, le=65535)
+    redis_password: SecretStr | None = None
+    redis_url: SecretStr
+    redis_key_prefix: str = "bank-ai"
+    redis_socket_timeout: float = Field(default=5.0, gt=0, le=60)
+    customer_assignment_lease_ttl_seconds: int = Field(default=300, ge=30, le=3600)
 
-    # ── Keycloak / OIDC ─────────────────────────────────────────────────
-    keycloak_issuer_url: str = Field(
-        default="http://localhost:8080/realms/bank-ai",
-    )
-    keycloak_jwks_url: str = Field(
-        default="http://localhost:8080/realms/bank-ai/protocol/openid-connect/certs",
-    )
-    oidc_expected_audience: str = Field(default="bank-ai-api")
-    keycloak_public_url: str = Field(default="http://localhost:8080")
-    keycloak_realm: str = Field(default="bank-ai")
+    # MinIO contract. Endpoint values include the http(s) scheme.
+    minio_internal_endpoint: str
+    minio_public_endpoint: str
+    minio_access_key: str | None = None
+    minio_secret_key: SecretStr | None = None
+    minio_secure: bool = False
+    minio_presigned_ttl_seconds: int = Field(default=600, ge=60, le=3600)
 
-    # ── OCR Provider ─────────────────────────────────────────────────────
-    ocr_provider: str = Field(default="mock")
-    ocr_api_url: str = Field(default="")
-    ocr_api_key: SecretStr = Field(default=SecretStr(""))
+    # Keycloak/OIDC contract.
+    keycloak_internal_url: str
+    keycloak_public_url: str
+    keycloak_realm: str = "bank-ai"
+    keycloak_issuer_url: str
+    keycloak_jwks_internal_url: str
+    keycloak_token_url: str
+    oidc_expected_audience: str
+    oidc_allowed_algorithms: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["RS256"])
+    oidc_jwks_cache_ttl_seconds: int = Field(default=300, ge=30, le=3600)
+    oidc_clock_skew_seconds: int = Field(default=30, ge=0, le=300)
 
-    # ── LLM Provider ─────────────────────────────────────────────────────
-    llm_provider: str = Field(default="mock")
-    llm_api_url: str = Field(default="")
-    llm_api_key: SecretStr = Field(default=SecretStr(""))
-    llm_model_name: str = Field(default="mock-model")
+    # Mock-by-default AI providers. Provider secrets remain optional in mock mode.
+    ocr_provider: str = "mock"
+    ocr_api_url: str | None = None
+    ocr_api_key: SecretStr | None = None
+    llm_provider: str = "mock"
+    llm_api_url: str | None = None
+    llm_api_key: SecretStr | None = None
+    llm_model_name: str = "mock-model"
+    embedding_provider: str = "mock"
+    embedding_api_url: str | None = None
+    embedding_api_key: SecretStr | None = None
+    embedding_dimension: int = Field(default=1024, ge=1)
+    embedding_model_name: str = "mock-embedding"
 
-    # ── Embedding Provider ───────────────────────────────────────────────
-    embedding_provider: str = Field(default="mock")
-    embedding_api_url: str = Field(default="")
-    embedding_api_key: SecretStr = Field(default=SecretStr(""))
-    embedding_dimension: int = Field(default=1024)
-    embedding_model_name: str = Field(default="mock-embedding")
+    # Security and logging.
+    field_encryption_key: SecretStr
+    max_upload_size_bytes: int = Field(default=50 * 1024 * 1024, ge=1)
+    rate_limit_per_minute: int = Field(default=120, ge=1)
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    log_format: Literal["json", "console"] = "json"
 
-    # ── Security ─────────────────────────────────────────────────────────
-    field_encryption_key: SecretStr = Field(default=SecretStr("changeme-encryption-key"))
-    max_upload_size_bytes: int = Field(default=50 * 1024 * 1024)  # 50 MB
-    rate_limit_per_minute: int = Field(default=120)
-
-    # ── Logging ──────────────────────────────────────────────────────────
-    log_level: str = Field(default="INFO")
-    log_format: str = Field(default="json")
-
-    # ── Validators ───────────────────────────────────────────────────────
-
-    @field_validator("database_url")
+    @field_validator("database_url", mode="before")
     @classmethod
-    def validate_database_url(cls, v: str) -> str:
-        if not v.startswith("postgresql+asyncpg://"):
-            msg = "DATABASE_URL must use postgresql+asyncpg:// scheme"
-            raise ValueError(msg)
-        return v
+    def normalize_database_url(cls, value: Any) -> SecretStr:
+        raw = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
+        if raw.startswith("postgresql://"):
+            raw = raw.replace("postgresql://", "postgresql+asyncpg://", 1)
+        if not raw.startswith("postgresql+asyncpg://"):
+            raise ValueError("DATABASE_URL must use the postgresql:// contract scheme")
+        return SecretStr(raw)
 
-    @field_validator("app_cors_origins", mode="before")
+    @field_validator("redis_url", mode="before")
     @classmethod
-    def parse_cors_origins(cls, v: Any) -> list[str]:
-        if isinstance(v, str):
-            return [origin.strip() for origin in v.split(",") if origin.strip()]
-        return v  # type: ignore[return-value]
+    def validate_redis_url(cls, value: Any) -> SecretStr:
+        raw = value.get_secret_value() if isinstance(value, SecretStr) else str(value)
+        if not raw.startswith(("redis://", "rediss://")):
+            raise ValueError("REDIS_URL must use redis:// or rediss://")
+        return SecretStr(raw)
 
-    @field_validator("log_level")
+    @field_validator(
+        "minio_internal_endpoint",
+        "minio_public_endpoint",
+        "keycloak_internal_url",
+        "keycloak_public_url",
+        "keycloak_issuer_url",
+        "keycloak_jwks_internal_url",
+        "keycloak_token_url",
+    )
     @classmethod
-    def validate_log_level(cls, v: str) -> str:
-        allowed = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
-        upper = v.upper()
-        if upper not in allowed:
-            msg = f"LOG_LEVEL must be one of {allowed}"
-            raise ValueError(msg)
-        return upper
+    def validate_http_url(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("endpoint must be an absolute HTTP(S) URL")
+        return value.rstrip("/")
+
+    @field_validator("app_cors_origins", "oidc_allowed_algorithms", mode="before")
+    @classmethod
+    def parse_string_list(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
+        return value
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def normalize_log_level(cls, value: Any) -> str:
+        return str(value).upper()
 
     @model_validator(mode="after")
-    def validate_production_safety(self) -> Settings:
-        """Prevent production from running with unsafe defaults."""
-        if self.app_env.lower() != "production":
+    def validate_security(self) -> Settings:
+        if not self.oidc_allowed_algorithms or any(algorithm != "RS256" for algorithm in self.oidc_allowed_algorithms):
+            raise ValueError("OIDC_ALLOWED_ALGORITHMS may only contain RS256")
+
+        if len(self.field_encryption_key.get_secret_value()) < 32:
+            raise ValueError("FIELD_ENCRYPTION_KEY must contain at least 32 characters")
+
+        for provider, api_url, api_key in (
+            (self.ocr_provider, self.ocr_api_url, self.ocr_api_key),
+            (self.llm_provider, self.llm_api_url, self.llm_api_key),
+            (self.embedding_provider, self.embedding_api_url, self.embedding_api_key),
+        ):
+            if provider.lower() != "mock" and (not api_url or api_key is None or not api_key.get_secret_value()):
+                raise ValueError(f"Provider {provider!r} requires its API URL and API key")
+
+        if self.app_env != "production":
             return self
 
-        _placeholder_re = re.compile(r"<secret>|changeme|placeholder|CHANGE_ME", re.IGNORECASE)
-
-        # Check placeholder secrets
-        secret_fields = {
-            "database_url": self.database_url,
-            "kafka_sasl_password": self.kafka_sasl_password.get_secret_value(),
-            "minio_secret_key": self.minio_secret_key.get_secret_value(),
-            "field_encryption_key": self.field_encryption_key.get_secret_value(),
+        secret_values = {
+            "DATABASE_URL": self.database_url.get_secret_value(),
+            "REDIS_URL": self.redis_url.get_secret_value(),
+            "KAFKA_SASL_PASSWORD": self.kafka_sasl_password.get_secret_value(),
+            "FIELD_ENCRYPTION_KEY": self.field_encryption_key.get_secret_value(),
         }
-        for field_name, value in secret_fields.items():
-            if _placeholder_re.search(value):
-                msg = f"Production environment must not use placeholder value for {field_name}"
-                raise ValueError(msg)
+        if self.minio_secret_key is not None:
+            secret_values["MINIO_SECRET_KEY"] = self.minio_secret_key.get_secret_value()
+        for name, value in secret_values.items():
+            if not value or _PLACEHOLDER.search(value):
+                raise ValueError(f"Production cannot use a placeholder for {name}")
 
-        # Check Redis URL for placeholder password
-        if _placeholder_re.search(self.redis_url):
-            msg = "Production environment must not use placeholder password in REDIS_URL"
-            raise ValueError(msg)
-
-        # Wildcard CORS
         if "*" in self.app_cors_origins:
-            msg = "Production environment must not use wildcard CORS origins"
-            raise ValueError(msg)
+            raise ValueError("Production cannot use wildcard CORS")
 
-        # JWT issuer/audience must be set
-        if not self.keycloak_issuer_url:
-            msg = "Production environment requires KEYCLOAK_ISSUER_URL"
-            raise ValueError(msg)
-
-        if not self.oidc_expected_audience:
-            msg = "Production environment requires OIDC_EXPECTED_AUDIENCE"
-            raise ValueError(msg)
-
-        # Prevent superuser database connection
-        if "postgres:" in self.database_url.split("@")[0] if "@" in self.database_url else False:
-            msg = "Production environment must not use 'postgres' superuser in DATABASE_URL"
-            raise ValueError(msg)
-
+        database_username = urlsplit(self.database_url.get_secret_value()).username
+        expected_database_user = "bank_worker" if self.app_process_type == "worker" else "bank_app"
+        if self.database_user != expected_database_user or database_username != expected_database_user:
+            raise ValueError(
+                f"Production {self.app_process_type} process must use the {expected_database_user} database role"
+            )
+        if self.kafka_sasl_username in {"kafka-admin", "admin"}:
+            raise ValueError("Production backend cannot use a Kafka admin credential")
+        if self.minio_access_key is not None and self.minio_access_key.lower() in {"minioadmin", "root"}:
+            raise ValueError("Production backend cannot use a MinIO root credential")
+        if self.kafka_security_protocol != "SASL_SSL":
+            raise ValueError("Production Kafka connections must use SASL_SSL")
         return self
 
     @property
-    def is_development(self) -> bool:
-        return self.app_env.lower() == "development"
+    def database_async_url(self) -> str:
+        """Return the normalized SQLAlchemy URL without exposing it in reprs."""
+
+        return self.database_url.get_secret_value()
+
+    @property
+    def redis_url_value(self) -> str:
+        return self.redis_url.get_secret_value()
 
     @property
     def is_production(self) -> bool:
-        return self.app_env.lower() == "production"
-
-    @property
-    def is_testing(self) -> bool:
-        return self.app_env.lower() == "testing"
+        return self.app_env == "production"
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Factory function for settings singleton.
+    """Return a process-wide immutable-by-convention settings instance."""
 
-    Used by FastAPI dependency injection. The settings instance is
-    cached by Pydantic Settings internally.
-    """
     return Settings()

@@ -107,17 +107,17 @@ for role in "${roles[@]}"; do
 done
 
 user_specs=(
-  '10000000-0000-4000-8000-000000000001|credit.officer@example.local|credit_officer'
-  '10000000-0000-4000-8000-000000000002|credit.manager@example.local|credit_manager'
-  '10000000-0000-4000-8000-000000000003|document.reviewer@example.local|document_reviewer'
-  '10000000-0000-4000-8000-000000000004|compliance@example.local|compliance_officer'
-  '10000000-0000-4000-8000-000000000005|approver@example.local|loan_approver'
-  '10000000-0000-4000-8000-000000000006|auditor@example.local|auditor'
-  '10000000-0000-4000-8000-000000000007|admin@example.local|admin'
+  '10000000-0000-4000-8000-000000000001|credit.officer@example.local|credit_officer|Credit|Officer'
+  '10000000-0000-4000-8000-000000000002|credit.manager@example.local|credit_manager|Credit|Manager'
+  '10000000-0000-4000-8000-000000000003|document.reviewer@example.local|document_reviewer|Document|Reviewer'
+  '10000000-0000-4000-8000-000000000004|compliance@example.local|compliance_officer|Compliance|Officer'
+  '10000000-0000-4000-8000-000000000005|approver@example.local|loan_approver|Loan|Approver'
+  '10000000-0000-4000-8000-000000000006|auditor@example.local|auditor|Audit|Officer'
+  '10000000-0000-4000-8000-000000000007|admin@example.local|admin|System|Administrator'
 )
 
 for specification in "${user_specs[@]}"; do
-  IFS='|' read -r expected_id username role <<< "$specification"
+  IFS='|' read -r expected_id username role first_name last_name <<< "$specification"
   response="$(kcadm get users -r "$KEYCLOAK_REALM" -q "username=$username" -q exact=true --fields id,username)"
   user_id="$(printf '%s\n' "$response" | extract_first_id)"
 
@@ -139,8 +139,11 @@ for specification in "${user_specs[@]}"; do
   kcadm update "users/$user_id" -r "$KEYCLOAK_REALM" \
     -s "username=$username" \
     -s "email=$username" \
+    -s "firstName=$first_name" \
+    -s "lastName=$last_name" \
     -s enabled=true \
-    -s emailVerified=true >/dev/null
+    -s emailVerified=true \
+    -s 'requiredActions=[]' >/dev/null
   kcadm set-password -r "$KEYCLOAK_REALM" \
     --userid "$user_id" \
     --new-password "$SEED_USER_PASSWORD" >/dev/null
@@ -150,4 +153,3 @@ for specification in "${user_specs[@]}"; do
 done
 
 log 'client secrets and seven demo identities were reconciled without storing passwords in realm JSON'
-

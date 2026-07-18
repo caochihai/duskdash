@@ -1,0 +1,122 @@
+/**
+ * CSS variables — cầu nối giữa design token (TS) và CSS Modules.
+ *
+ * Nguồn sự thật là `src/theme/tokens.ts`. Các biến dưới đây phản chiếu
+ * token đó để CSS Modules dùng được mà không hard-code màu rải rác.
+ */
+
+:root {
+  /* Cam SHB — chính thức: #F37021 */
+  --shb-orange-50: #fff7f0;
+  --shb-orange-100: #feebdd;
+  --shb-orange-200: #fdd3b5;
+  --shb-orange-300: #fcb37f;
+  --shb-orange-400: #f88c46;
+  --shb-orange-500: #f37021;
+  --shb-orange-600: #dd5a12;
+  --shb-orange-700: #b9450c;
+
+  /* Indigo SHB — chính thức: #2F2E79 */
+  --shb-navy-50: #f3f3fa;
+  --shb-navy-100: #e1e1f3;
+  --shb-navy-200: #c0bfe7;
+  --shb-navy-400: #6f6dc4;
+  --shb-navy-600: #3c3a96;
+  --shb-navy-700: #2f2e79;
+  --shb-navy-800: #23224f;
+  --shb-navy-900: #1b1a46;
+
+  /* Trung tính ấm */
+  --shb-white: #ffffff;
+  --shb-warm-white: #fffdf9;
+  --shb-canvas: #f7f5f1;
+  --shb-surface: #ffffff;
+  --shb-surface-soft: #fff9f4;
+  --shb-border: #eae3da;
+  --shb-border-strong: #d9d0c5;
+  --shb-text-primary: #18212b;
+  --shb-text-secondary: #667085;
+  --shb-text-muted: #98a2b3;
+
+  /* Ngữ nghĩa */
+  --shb-success: #15805d;
+  --shb-warning: #d97706;
+  --shb-error: #c9362b;
+  --shb-info: #276a92;
+
+  /* Bo góc */
+  --shb-radius-sm: 8px;
+  --shb-radius-md: 12px;
+  --shb-radius-lg: 18px;
+  --shb-radius-card: 20px;
+  --shb-radius-composer: 26px;
+  --shb-radius-pill: 999px;
+
+  /* Shadow */
+  --shb-shadow-sm: 0 2px 8px rgba(35, 34, 79, 0.06);
+  --shb-shadow-md: 0 8px 30px rgba(35, 34, 79, 0.08);
+  --shb-shadow-lg: 0 16px 48px rgba(35, 34, 79, 0.12);
+  --shb-glow-orange: 0 0 0 4px rgba(243, 112, 33, 0.1);
+
+  /* Layout */
+  --shb-header-height: 64px;
+  --shb-content-max-width: 820px;
+  --shb-chat-max-width: 880px;
+
+  /* Safe area (iOS) */
+  --shb-safe-bottom: env(safe-area-inset-bottom, 0px);
+  --shb-safe-top: env(safe-area-inset-top, 0px);
+
+  /* Spacing scale 4px */
+  --shb-space-1: 4px;
+  --shb-space-2: 8px;
+  --shb-space-3: 12px;
+  --shb-space-4: 16px;
+  --shb-space-5: 20px;
+  --shb-space-6: 24px;
+  --shb-space-8: 32px;
+  --shb-space-10: 40px;
+
+  color-scheme: light;
+}
+
+body {
+  background: var(--shb-canvas);
+  color: var(--shb-text-primary);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* Scrollbar mảnh, ấm — thay cho scrollbar xám mặc định. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--shb-border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--shb-border-strong);
+  border-radius: var(--shb-radius-pill);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--shb-text-muted);
+  background-clip: content-box;
+}
+
+::selection {
+  background: var(--shb-orange-100);
+  color: var(--shb-navy-800);
+}

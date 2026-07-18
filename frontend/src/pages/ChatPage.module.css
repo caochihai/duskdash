@@ -1,0 +1,58 @@
+/* Split-view: chat bên trái + panel hồ sơ khách hàng bên phải. */
+.splitRow {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.chatCol {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.panelCol {
+  position: relative;
+  flex-shrink: 0;
+  height: 100%;
+  min-width: 340px;
+  /* width được set inline theo % (có thanh kéo). */
+}
+
+/* Thanh kéo đổi độ rộng, nằm ở mép trái panel. */
+.resizer {
+  position: absolute;
+  top: 0;
+  left: -3px;
+  bottom: 0;
+  width: 7px;
+  z-index: 6;
+  cursor: col-resize;
+  background: transparent;
+  transition: background-color 150ms ease;
+}
+
+.resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 40px;
+  border-radius: var(--shb-radius-pill);
+  background: var(--shb-border-strong);
+  transition: background-color 150ms ease;
+}
+
+.resizer:hover {
+  background: rgba(243, 112, 33, 0.06);
+}
+
+.resizer:hover::after {
+  background: var(--shb-orange-400);
+}

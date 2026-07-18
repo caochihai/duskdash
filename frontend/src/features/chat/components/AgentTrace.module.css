@@ -1,0 +1,142 @@
+.wrapper {
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-lg);
+  background: var(--shb-warm-white);
+  overflow: hidden;
+}
+
+/* Header bấm được để mở/đóng toàn bộ trace. */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background-color 150ms ease;
+}
+
+.header:hover {
+  background: rgba(243, 112, 33, 0.05);
+}
+
+.header:focus-visible {
+  outline: 3px solid var(--shb-orange-500);
+  outline-offset: -3px;
+}
+
+.headerIcon {
+  color: var(--shb-orange-500);
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+/* Tiêu đề tóm tắt kế hoạch — xám nhạt, không tranh chấp với câu trả lời. */
+.headerTitle {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--shb-text-secondary);
+  line-height: 1.45;
+}
+
+.headerMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 11.5px;
+  color: var(--shb-text-muted);
+}
+
+.chevron {
+  font-size: 11px;
+  color: var(--shb-text-muted);
+  transition: transform 180ms ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.body {
+  padding: 2px 14px 12px;
+  border-top: 1px solid var(--shb-border);
+}
+
+/* Nội dung mỗi bước: mô tả + tool call. */
+.stepDesc {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--shb-text-secondary);
+}
+
+.toolCall {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 7px 10px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-sm);
+  background: var(--shb-surface);
+  font-size: 12.5px;
+}
+
+.toolIcon {
+  color: var(--shb-navy-600);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.toolName {
+  font-weight: 600;
+  color: var(--shb-navy-700);
+  white-space: nowrap;
+}
+
+.toolResult {
+  color: var(--shb-text-secondary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentTag {
+  flex-shrink: 0;
+}
+
+.stepTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 550;
+  color: var(--shb-navy-800);
+}
+
+.doneRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 2px 0;
+  font-size: 13px;
+  color: var(--shb-success);
+  font-weight: 500;
+}
+
+@media (max-width: 767px) {
+  .headerMeta {
+    display: none;
+  }
+
+  .toolResult {
+    display: none;
+  }
+}

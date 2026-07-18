@@ -1,0 +1,216 @@
+services:
+  backend-api:
+    build:
+      # Multi-file runs use infra/docker-compose.infra.yml as the first file;
+      # Compose resolves every relative path from that file's directory.
+      context: ../backend
+      dockerfile: Dockerfile
+    image: bank-ai-backend:0.1.0
+    command: ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    restart: unless-stopped
+    environment: &backend-api-environment
+      APP_ENV: ${APP_ENV:-development}
+      APP_PORT: "8000"
+      APP_CORS_ORIGINS: ${APP_CORS_ORIGINS:-http://localhost:3000}
+      DATABASE_HOST: postgres
+      DATABASE_PORT: "5432"
+      DATABASE_NAME: bank_ai
+      DATABASE_USER: ${POSTGRES_APP_USER:-bank_app}
+      DATABASE_PASSWORD: ${POSTGRES_APP_PASSWORD:?Generate infra/.env.local}
+      DATABASE_URL: postgresql://${POSTGRES_APP_USER:-bank_app}:${POSTGRES_APP_PASSWORD:?Generate infra/.env.local}@postgres:5432/bank_ai
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?Generate infra/.env.local}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?Generate infra/.env.local}@redis:6379/0
+      REDIS_KEY_PREFIX: bank-ai
+      CUSTOMER_ASSIGNMENT_LEASE_TTL_SECONDS: ${CUSTOMER_ASSIGNMENT_LEASE_TTL_SECONDS:-300}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_SECURITY_PROTOCOL: SASL_PLAINTEXT
+      KAFKA_SASL_MECHANISM: SCRAM-SHA-512
+      KAFKA_SASL_USERNAME: ${KAFKA_BANK_API_USERNAME:-bank-api}
+      KAFKA_SASL_PASSWORD: ${KAFKA_BANK_API_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: bank-api
+      MINIO_INTERNAL_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: ${MINIO_BANK_API_ACCESS_KEY:-bank-api}
+      MINIO_SECRET_KEY: ${MINIO_BANK_API_SECRET_KEY:?Generate infra/.env.local}
+      MINIO_SECURE: "false"
+      MINIO_PRESIGNED_TTL_SECONDS: "600"
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: bank-ai
+      KEYCLOAK_ISSUER_URL: http://localhost:8080/realms/bank-ai
+      KEYCLOAK_JWKS_INTERNAL_URL: http://keycloak:8080/realms/bank-ai/protocol/openid-connect/certs
+      KEYCLOAK_TOKEN_URL: http://keycloak:8080/realms/bank-ai/protocol/openid-connect/token
+      OIDC_EXPECTED_AUDIENCE: bank-ai-api
+      FIELD_ENCRYPTION_KEY: ${FIELD_ENCRYPTION_KEY:?Generate infra/.env.local}
+      OCR_PROVIDER: mock
+      EMBEDDING_PROVIDER: mock
+      LLM_PROVIDER: mock
+      LOG_FORMAT: json
+      LOG_LEVEL: INFO
+    ports:
+      - 127.0.0.1:8000:8000
+    networks:
+      - bank-edge
+      - bank-application
+      - bank-data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=5)"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    security_opt:
+      - no-new-privileges:true
+
+  backend-outbox-publisher:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.messaging.outbox_publisher"]
+    restart: unless-stopped
+    environment:
+      <<: *backend-api-environment
+      OUTBOX_PRODUCER_ID: bank-api
+    networks:
+      - bank-application
+      - bank-data
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  backend-document-worker:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.workers.document_worker"]
+    restart: unless-stopped
+    environment: &document-worker-environment
+      <<: *backend-api-environment
+      DATABASE_USER: ${POSTGRES_WORKER_USER:-bank_worker}
+      DATABASE_PASSWORD: ${POSTGRES_WORKER_PASSWORD:?Generate infra/.env.local}
+      DATABASE_URL: postgresql://${POSTGRES_WORKER_USER:-bank_worker}:${POSTGRES_WORKER_PASSWORD:?Generate infra/.env.local}@postgres:5432/bank_ai
+      KAFKA_SASL_USERNAME: ${KAFKA_DOCUMENT_WORKER_USERNAME:-document-worker}
+      KAFKA_SASL_PASSWORD: ${KAFKA_DOCUMENT_WORKER_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: document-worker
+      KAFKA_CONSUMER_GROUP: document-worker-group
+      MINIO_ACCESS_KEY: ${MINIO_DOCUMENT_WORKER_ACCESS_KEY:-document-worker}
+      MINIO_SECRET_KEY: ${MINIO_DOCUMENT_WORKER_SECRET_KEY:?Generate infra/.env.local}
+    networks:
+      - bank-application
+      - bank-data
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  backend-analysis-worker:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.workers.analysis_orchestrator_worker"]
+    restart: unless-stopped
+    environment:
+      <<: *document-worker-environment
+      KAFKA_SASL_USERNAME: ${KAFKA_ANALYSIS_ORCHESTRATOR_USERNAME:-analysis-orchestrator}
+      KAFKA_SASL_PASSWORD: ${KAFKA_ANALYSIS_ORCHESTRATOR_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: analysis-orchestrator
+      KAFKA_CONSUMER_GROUP: analysis-orchestrator-group
+      MINIO_ACCESS_KEY: ""
+      MINIO_SECRET_KEY: ""
+    networks:
+      - bank-application
+      - bank-data
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+
+  backend-credit-worker:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.workers.credit_worker"]
+    restart: unless-stopped
+    environment:
+      <<: *document-worker-environment
+      KAFKA_SASL_USERNAME: ${KAFKA_CREDIT_WORKER_USERNAME:-credit-worker}
+      KAFKA_SASL_PASSWORD: ${KAFKA_CREDIT_WORKER_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: credit-worker
+      KAFKA_CONSUMER_GROUP: credit-worker-group
+      MINIO_ACCESS_KEY: ""
+      MINIO_SECRET_KEY: ""
+    networks: [bank-application, bank-data]
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt: [no-new-privileges:true]
+
+  backend-compliance-worker:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.workers.compliance_worker"]
+    restart: unless-stopped
+    environment:
+      <<: *document-worker-environment
+      KAFKA_SASL_USERNAME: ${KAFKA_COMPLIANCE_WORKER_USERNAME:-compliance-worker}
+      KAFKA_SASL_PASSWORD: ${KAFKA_COMPLIANCE_WORKER_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: compliance-worker
+      KAFKA_CONSUMER_GROUP: compliance-worker-group
+      MINIO_ACCESS_KEY: ""
+      MINIO_SECRET_KEY: ""
+    networks: [bank-application, bank-data]
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt: [no-new-privileges:true]
+
+  backend-report-worker:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.workers.report_worker"]
+    restart: unless-stopped
+    environment:
+      <<: *document-worker-environment
+      KAFKA_SASL_USERNAME: ${KAFKA_REPORT_WORKER_USERNAME:-report-worker}
+      KAFKA_SASL_PASSWORD: ${KAFKA_REPORT_WORKER_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: report-worker
+      KAFKA_CONSUMER_GROUP: report-worker-group
+      MINIO_ACCESS_KEY: ${MINIO_REPORT_WORKER_ACCESS_KEY:-report-worker}
+      MINIO_SECRET_KEY: ${MINIO_REPORT_WORKER_SECRET_KEY:?Generate infra/.env.local}
+    networks: [bank-application, bank-data]
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt: [no-new-privileges:true]
+
+  backend-notification-worker:
+    image: bank-ai-backend:0.1.0
+    profiles: [backend-workers]
+    command: ["python", "-m", "app.workers.notification_worker"]
+    restart: unless-stopped
+    environment:
+      <<: *document-worker-environment
+      KAFKA_SASL_USERNAME: ${KAFKA_NOTIFICATION_GATEWAY_USERNAME:-notification-gateway}
+      KAFKA_SASL_PASSWORD: ${KAFKA_NOTIFICATION_GATEWAY_PASSWORD:?Generate infra/.env.local}
+      KAFKA_CLIENT_ID: notification-gateway
+      KAFKA_CONSUMER_GROUP: notification-gateway-group
+      MINIO_ACCESS_KEY: ""
+      MINIO_SECRET_KEY: ""
+    networks: [bank-application, bank-data]
+    depends_on:
+      backend-api:
+        condition: service_healthy
+    security_opt: [no-new-privileges:true]

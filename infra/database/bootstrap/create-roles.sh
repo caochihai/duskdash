@@ -11,7 +11,7 @@ set -Eeuo pipefail
 
 export PGPASSWORD="${POSTGRES_PASSWORD}"
 
-psql --host=localhost --username="${POSTGRES_USER}" --dbname=postgres \
+psql --username="${POSTGRES_USER}" --dbname=postgres \
     --set=ON_ERROR_STOP=1 \
     --set=migrator_password="${POSTGRES_MIGRATOR_PASSWORD}" \
     --set=app_password="${POSTGRES_APP_PASSWORD}" \
@@ -87,7 +87,7 @@ REVOKE CONNECT ON DATABASE keycloak
     FROM bank_migrator, bank_app, bank_worker, bank_readonly;
 SQL
 
-psql --host=localhost --username="${POSTGRES_USER}" --dbname=bank_ai \
+psql --username="${POSTGRES_USER}" --dbname=bank_ai \
     --set=ON_ERROR_STOP=1 <<'SQL'
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON DATABASE bank_ai FROM PUBLIC;
@@ -95,7 +95,7 @@ GRANT CONNECT, TEMPORARY ON DATABASE bank_ai
     TO bank_migrator, bank_app, bank_worker, bank_readonly;
 SQL
 
-psql --host=localhost --username="${POSTGRES_USER}" --dbname=keycloak \
+psql --username="${POSTGRES_USER}" --dbname=keycloak \
     --set=ON_ERROR_STOP=1 <<'SQL'
 REVOKE CREATE ON SCHEMA public FROM PUBLIC;
 REVOKE ALL ON DATABASE keycloak FROM PUBLIC;

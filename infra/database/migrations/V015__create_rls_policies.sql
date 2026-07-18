@@ -293,7 +293,7 @@ WITH CHECK (
     )
     AND (
         identity.current_is_admin()
-        OR identity.current_has_role('loan_approver'::CITEXT)
+        OR identity.current_has_role('loan_approver'::public.citext)
     )
 );
 
@@ -309,7 +309,7 @@ USING (
     )
     AND (
         identity.current_is_admin()
-        OR identity.current_has_role('loan_approver'::CITEXT)
+        OR identity.current_has_role('loan_approver'::public.citext)
     )
 )
 WITH CHECK (
@@ -320,7 +320,7 @@ WITH CHECK (
     )
     AND (
         identity.current_is_admin()
-        OR identity.current_has_role('loan_approver'::CITEXT)
+        OR identity.current_has_role('loan_approver'::public.citext)
     )
 );
 

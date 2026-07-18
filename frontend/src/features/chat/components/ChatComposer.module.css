@@ -1,0 +1,76 @@
+.wrapper {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  padding: 8px 24px calc(14px + var(--shb-safe-bottom));
+  /* Fade mềm để nội dung chat trôi vào composer, không cắt ngang đột ngột. */
+  background: linear-gradient(
+    180deg,
+    rgba(247, 245, 241, 0) 0%,
+    var(--shb-canvas) 26%,
+    var(--shb-canvas) 100%
+  );
+}
+
+.inner {
+  width: 100%;
+  max-width: var(--shb-chat-max-width);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Neo định vị cho popup lệnh `/` (popup bám trên đầu composer). */
+.shellAnchor {
+  position: relative;
+}
+
+.composerShell {
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-composer);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 12px 36px rgba(35, 34, 79, 0.08),
+    0 2px 8px rgba(243, 112, 33, 0.05);
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.composerShell:focus-within {
+  border-color: var(--shb-orange-500);
+  box-shadow:
+    0 14px 42px rgba(35, 34, 79, 0.1),
+    0 0 0 4px rgba(243, 112, 33, 0.1);
+}
+
+/* Ant Design X Sender nằm trong shell -> bỏ viền/nền riêng của nó. */
+.sender {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: var(--shb-radius-composer) !important;
+}
+
+/*
+ * Focus ring đã do `.composerShell:focus-within` thể hiện (viền cam bo tròn).
+ * Bỏ outline mặc định trên chính textarea để không có hai vòng focus lồng nhau
+ * (một bo tròn ngoài, một vuông góc bên trong).
+ * Các control khác trong app vẫn giữ focus ring toàn cục.
+ */
+.composerShell textarea:focus-visible {
+  outline: none;
+}
+
+.divider {
+  height: 1px;
+  margin: 0 12px;
+  background: var(--shb-border);
+}
+
+@media (max-width: 767px) {
+  .wrapper {
+    padding: 6px 12px calc(10px + var(--shb-safe-bottom));
+  }
+}

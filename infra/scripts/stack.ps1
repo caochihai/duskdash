@@ -4,7 +4,7 @@ param(
     [ValidateSet(
         'secrets', 'infra-up', 'infra-down', 'infra-reset', 'infra-logs', 'infra-ps',
         'db-migrate', 'db-seed', 'db-shell', 'db-verify',
-        'kafka-init', 'kafka-topics', 'kafka-acls', 'kafka-smoke', 'kafka-describe',
+        'kafka-init', 'kafka-reset', 'kafka-topics', 'kafka-acls', 'kafka-smoke', 'kafka-describe',
         'minio-init', 'minio-verify', 'keycloak-init', 'keycloak-verify',
         'tools-up', 'observability-up', 'verify', 'bootstrap'
     )]
@@ -70,6 +70,43 @@ switch ($Action) {
         Invoke-Compose exec -T postgres psql -U postgres -d bank_ai -v ON_ERROR_STOP=1 -c "SELECT extname FROM pg_extension WHERE extname IN ('vector','pgcrypto','citext','uuid-ossp') ORDER BY extname;"
     }
     'kafka-init' { Invoke-Compose run --rm kafka-init }
+    'kafka-reset' {
+        if (-not $Force) {
+            $answer = Read-Host 'This removes only the local Kafka volume. Type KAFKA_RESET to continue'
+            if ($answer -cne 'KAFKA_RESET') { Write-Host 'Kafka reset cancelled.'; exit 1 }
+        }
+
+        Invoke-Compose stop kafka
+        Invoke-Compose rm -f kafka
+
+        $kafkaVolumes = @(
+            & docker volume ls `
+                --filter 'label=com.docker.compose.project=bank-ai-workbench' `
+                --filter 'label=com.docker.compose.volume=kafka_data' `
+                --format '{{.Name}}'
+        )
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not resolve the Kafka volume (exit code $LASTEXITCODE)."
+        }
+        if ($kafkaVolumes.Count -ne 1) {
+            throw "Expected exactly one Kafka volume, found $($kafkaVolumes.Count)."
+        }
+
+        $volumeName = $kafkaVolumes[0]
+        $volumeLabels = & docker volume inspect $volumeName `
+            --format '{{index .Labels "com.docker.compose.project"}}|{{index .Labels "com.docker.compose.volume"}}'
+        if ($LASTEXITCODE -ne 0 -or $volumeLabels -ne 'bank-ai-workbench|kafka_data') {
+            throw "Refusing to remove unexpected Docker volume: $volumeName"
+        }
+
+        & docker volume rm $volumeName
+        if ($LASTEXITCODE -ne 0) {
+            throw "Could not remove Kafka volume $volumeName."
+        }
+        Invoke-Compose up -d --wait --wait-timeout 180 kafka
+        Invoke-Compose run --rm kafka-init
+        Write-Host 'Kafka local data was reset and the required users, topics, and ACLs were recreated.'
+    }
     'kafka-topics' { Invoke-Compose run --rm --entrypoint /bin/bash kafka-init /opt/bank/kafka/scripts/create-topics.sh }
     'kafka-acls' { Invoke-Compose run --rm --entrypoint /bin/bash kafka-init /opt/bank/kafka/scripts/create-acls.sh }
     'kafka-smoke' { Invoke-Compose run --rm --entrypoint /bin/bash kafka-init /opt/bank/kafka/scripts/smoke-test.sh }

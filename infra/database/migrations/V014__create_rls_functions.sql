@@ -72,7 +72,7 @@ BEGIN
 END
 $function$;
 
-CREATE FUNCTION identity.current_has_role(required_role_code CITEXT)
+CREATE FUNCTION identity.current_has_role(required_role_code public.citext)
 RETURNS BOOLEAN
 LANGUAGE sql
 STABLE
@@ -100,7 +100,7 @@ SECURITY DEFINER
 SET search_path = pg_catalog
 AS $function$
     SELECT COALESCE(current_setting('app.is_admin', TRUE), 'false') = 'true'
-       AND identity.current_has_role('admin'::CITEXT);
+       AND identity.current_has_role('admin'::public.citext);
 $function$;
 
 CREATE FUNCTION identity.can_access_customer(employee_id UUID, customer_id UUID)
@@ -134,8 +134,8 @@ AS $function$
                                  OR employee_scope.valid_until > CURRENT_TIMESTAMP
                              )
                              AND employee_scope.permission_code IN (
-                                 'customer:read'::CITEXT,
-                                 'customer:search'::CITEXT
+                                 'customer:read'::public.citext,
+                                 'customer:search'::public.citext
                              )
                              AND (
                                  (
@@ -184,11 +184,11 @@ AS $function$
                                 OR employee_scope.valid_until > CURRENT_TIMESTAMP
                             )
                             AND employee_scope.permission_code IN (
-                                'loan:read'::CITEXT,
-                                'loan:update'::CITEXT,
-                                'loan:analyze'::CITEXT,
-                                'loan:submit'::CITEXT,
-                                'loan:approve'::CITEXT
+                                'loan:read'::public.citext,
+                                'loan:update'::public.citext,
+                                'loan:analyze'::public.citext,
+                                'loan:submit'::public.citext,
+                                'loan:approve'::public.citext
                             )
                       )
                   )
@@ -198,14 +198,14 @@ $function$;
 
 REVOKE ALL ON FUNCTION identity.current_employee_id() FROM PUBLIC;
 REVOKE ALL ON FUNCTION identity.current_branch_id() FROM PUBLIC;
-REVOKE ALL ON FUNCTION identity.current_has_role(CITEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION identity.current_has_role(public.citext) FROM PUBLIC;
 REVOKE ALL ON FUNCTION identity.current_is_admin() FROM PUBLIC;
 REVOKE ALL ON FUNCTION identity.can_access_customer(UUID, UUID) FROM PUBLIC;
 REVOKE ALL ON FUNCTION identity.can_access_loan(UUID, UUID) FROM PUBLIC;
 
 GRANT EXECUTE ON FUNCTION identity.current_employee_id() TO bank_app, bank_worker;
 GRANT EXECUTE ON FUNCTION identity.current_branch_id() TO bank_app, bank_worker;
-GRANT EXECUTE ON FUNCTION identity.current_has_role(CITEXT) TO bank_app, bank_worker;
+GRANT EXECUTE ON FUNCTION identity.current_has_role(public.citext) TO bank_app, bank_worker;
 GRANT EXECUTE ON FUNCTION identity.current_is_admin() TO bank_app, bank_worker;
 GRANT EXECUTE ON FUNCTION identity.can_access_customer(UUID, UUID) TO bank_app, bank_worker;
 GRANT EXECUTE ON FUNCTION identity.can_access_loan(UUID, UUID) TO bank_app, bank_worker;

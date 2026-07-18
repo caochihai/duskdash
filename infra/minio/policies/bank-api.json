@@ -48,7 +48,15 @@
         "arn:aws:s3:::policy-documents/policies/*",
         "arn:aws:s3:::generated-reports/analysis-cases/*"
       ]
+    },
+    {
+      "Sid": "MarkDerivedObjectsEligibleAfterRetentionCheck",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObjectTagging",
+        "s3:PutObjectTagging"
+      ],
+      "Resource": "arn:aws:s3:::customer-doc-derived/documents/*"
     }
   ]
 }
-

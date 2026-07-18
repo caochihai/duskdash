@@ -1,0 +1,269 @@
+.page {
+  min-height: 100dvh;
+  background: var(--shb-canvas);
+  padding-bottom: 48px;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 24px;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--shb-border);
+}
+
+.container {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.titleBlock {
+  margin-bottom: 20px;
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 26px;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  color: var(--shb-navy-800);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--shb-text-secondary);
+}
+
+/* KPI tiles */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.kpi {
+  padding: 16px 18px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-lg);
+  background: var(--shb-surface);
+  box-shadow: var(--shb-shadow-sm);
+}
+
+.kpiLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  color: var(--shb-text-secondary);
+  margin-bottom: 6px;
+}
+
+.kpiValue {
+  font-size: 26px;
+  font-weight: 680;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--shb-navy-800);
+}
+
+.kpiUnit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--shb-text-muted);
+}
+
+.kpiAccent {
+  color: var(--shb-orange-600);
+}
+
+.section {
+  margin-bottom: 22px;
+}
+
+.sectionTitle {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--shb-navy-700);
+}
+
+.sectionDesc {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: var(--shb-text-secondary);
+}
+
+/* Collaboration flow */
+.flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+  padding: 22px 16px;
+}
+
+.flowPlanner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 18px;
+  border: 1px solid var(--shb-navy-200);
+  border-radius: var(--shb-radius-lg);
+  background: var(--shb-navy-50);
+}
+
+.flowSpecialists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.flowNode {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-md);
+  background: var(--shb-surface);
+  min-width: 190px;
+}
+
+.flowIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--shb-radius-sm);
+  background: var(--shb-orange-50);
+  color: var(--shb-orange-600);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.flowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.flowName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--shb-navy-800);
+  line-height: 1.35;
+}
+
+.flowMeta {
+  font-size: 11.5px;
+  color: var(--shb-text-muted);
+}
+
+.flowArrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  color: var(--shb-orange-400);
+  font-size: 16px;
+}
+
+.flowArrowLabel {
+  font-size: 10.5px;
+  color: var(--shb-text-muted);
+  white-space: nowrap;
+}
+
+/* Comparison */
+.cmpHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+  padding: 11px 14px;
+  border-radius: var(--shb-radius-md);
+  background: var(--shb-orange-50);
+  font-size: 13px;
+  color: var(--shb-navy-700);
+}
+
+.winnerCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.verdict {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--shb-border);
+  border-radius: var(--shb-radius-lg);
+  background: var(--shb-surface);
+}
+
+.verdictTitle {
+  margin: 0 0 6px;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--shb-navy-700);
+}
+
+.verdictText {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--shb-text-secondary);
+}
+
+@media (max-width: 1199px) {
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .container {
+    padding: 16px 12px;
+  }
+
+  .header {
+    padding: 12px 14px;
+  }
+
+  .kpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .kpiValue {
+    font-size: 21px;
+  }
+
+  .title {
+    font-size: 21px;
+  }
+
+  .flowSpecialists {
+    grid-template-columns: 1fr;
+  }
+
+  .flowNode {
+    min-width: 0;
+  }
+}

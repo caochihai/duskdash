@@ -9,8 +9,8 @@ buckets:
     object_lock: false
     lifecycle: null
   - name: customer-doc-derived
-    versioning: true
-    object_lock: true
+    versioning: false
+    object_lock: false
     lifecycle: lifecycle/customer-doc-derived.json.template
   - name: policy-documents
     versioning: true
@@ -24,4 +24,3 @@ buckets:
     versioning: true
     object_lock: true
     lifecycle: null
-

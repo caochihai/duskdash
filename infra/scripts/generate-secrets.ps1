@@ -1,13 +1,26 @@
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [ValidateSet(
+        'KAFKA_ADMIN_PASSWORD',
+        'MINIO_BANK_API_SECRET_KEY',
+        'MINIO_DOCUMENT_WORKER_SECRET_KEY',
+        'MINIO_POLICY_WORKER_SECRET_KEY',
+        'MINIO_REPORT_WORKER_SECRET_KEY',
+        'MINIO_AUDIT_WRITER_SECRET_KEY'
+    )]
+    [string]$RotateKey
 )
 
 $ErrorActionPreference = 'Stop'
 $infraRoot = Split-Path -Parent $PSScriptRoot
 $outputPath = Join-Path $infraRoot '.env.local'
 
-if ((Test-Path -LiteralPath $outputPath) -and -not $Force) {
+if ($RotateKey -and -not (Test-Path -LiteralPath $outputPath)) {
+    throw "$outputPath does not exist. Generate it before rotating a key."
+}
+
+if ((Test-Path -LiteralPath $outputPath) -and -not $Force -and -not $RotateKey) {
     throw "$outputPath already exists. Re-run with -Force to replace it."
 }
 
@@ -24,6 +37,37 @@ function New-SecureValue {
     }
 
     return [Convert]::ToBase64String($bytes).TrimEnd('=').Replace('+', '-').Replace('/', '_')
+}
+
+if ($RotateKey) {
+    $existingLines = Get-Content -LiteralPath $outputPath
+    $replacement = if ($RotateKey.StartsWith('MINIO_', [System.StringComparison]::Ordinal)) {
+        New-SecureValue -ByteCount 30
+    }
+    else {
+        New-SecureValue
+    }
+    $matched = $false
+    $updatedLines = foreach ($line in $existingLines) {
+        if ($line.StartsWith("$RotateKey=", [System.StringComparison]::Ordinal)) {
+            $matched = $true
+            "$RotateKey=$replacement"
+        }
+        else {
+            $line
+        }
+    }
+    if (-not $matched) {
+        throw "Key $RotateKey is missing from $outputPath."
+    }
+    $utf8WithoutBom = New-Object System.Text.UTF8Encoding($false)
+    [System.IO.File]::WriteAllText(
+        $outputPath,
+        (($updatedLines -join "`n") + "`n"),
+        $utf8WithoutBom
+    )
+    Write-Host "Rotated $RotateKey in the ignored local environment file."
+    exit 0
 }
 
 $values = [ordered]@{
@@ -45,15 +89,15 @@ $values = [ordered]@{
     MINIO_ROOT_USER                              = 'minio-root-admin'
     MINIO_ROOT_PASSWORD                          = New-SecureValue
     MINIO_BANK_API_ACCESS_KEY                    = 'bank-api'
-    MINIO_BANK_API_SECRET_KEY                    = New-SecureValue
+    MINIO_BANK_API_SECRET_KEY                    = New-SecureValue -ByteCount 30
     MINIO_DOCUMENT_WORKER_ACCESS_KEY             = 'document-worker'
-    MINIO_DOCUMENT_WORKER_SECRET_KEY             = New-SecureValue
+    MINIO_DOCUMENT_WORKER_SECRET_KEY             = New-SecureValue -ByteCount 30
     MINIO_POLICY_WORKER_ACCESS_KEY               = 'policy-worker'
-    MINIO_POLICY_WORKER_SECRET_KEY               = New-SecureValue
+    MINIO_POLICY_WORKER_SECRET_KEY               = New-SecureValue -ByteCount 30
     MINIO_REPORT_WORKER_ACCESS_KEY               = 'report-worker'
-    MINIO_REPORT_WORKER_SECRET_KEY               = New-SecureValue
+    MINIO_REPORT_WORKER_SECRET_KEY               = New-SecureValue -ByteCount 30
     MINIO_AUDIT_WRITER_ACCESS_KEY                = 'audit-writer'
-    MINIO_AUDIT_WRITER_SECRET_KEY                = New-SecureValue
+    MINIO_AUDIT_WRITER_SECRET_KEY                = New-SecureValue -ByteCount 30
     MINIO_DERIVED_RETENTION_DAYS                 = '90'
     KEYCLOAK_ADMIN                               = 'admin'
     KEYCLOAK_ADMIN_PASSWORD                      = New-SecureValue

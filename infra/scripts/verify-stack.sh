@@ -28,7 +28,7 @@ pass 'Compose config and image pins'
 
 if grep -Rin --exclude=intructions.md --exclude=.env.local --include='*.yml' --include='*.yaml' \
     --include='*.json' --include='*.conf' --include='*.properties' --include='*.sql' \
-    --include='*.sh' --include='*.ps1' 'changeme' "$INFRA_ROOT" >/dev/null 2>&1; then
+    --include='*.sh' --include='*.ps1' 'change''me' "$INFRA_ROOT" >/dev/null 2>&1; then
   fail 'changeme placeholder found in source config'
 fi
 pass 'No changeme placeholder'

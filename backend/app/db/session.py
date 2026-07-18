@@ -1,15 +1,15 @@
-"""Database session management for async SQLAlchemy 2.
+"""Async SQLAlchemy engine and session lifecycle.
 
-Provides:
-- ``AsyncSessionFactory``: configured sessionmaker bound to the engine.
-- ``get_async_session()``: FastAPI-compatible dependency that yields a session.
-- ``init_db()`` / ``close_db()``: called during application lifespan.
+The application connects as the infrastructure-owned ``bank_app`` (or
+``bank_worker`` in worker processes) role.  This module never creates schema
+objects; Flyway migrations under ``infra/database`` remain authoritative.
 """
 
 from __future__ import annotations
 
-from typing import AsyncGenerator
+from collections.abc import AsyncIterator
 
+from sqlalchemy.engine import URL, make_url
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
@@ -17,99 +17,82 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
+from app.config import Settings, get_settings
+
 __all__ = [
-    "async_engine",
     "AsyncSessionFactory",
+    "async_engine",
+    "close_db",
+    "create_session_factory",
     "get_async_session",
     "init_db",
-    "close_db",
 ]
 
-# ---------------------------------------------------------------------------
-# Module-level singletons – initialised lazily via ``init_db()``
-# ---------------------------------------------------------------------------
 async_engine: AsyncEngine | None = None
 AsyncSessionFactory: async_sessionmaker[AsyncSession] | None = None
 
 
-def _build_url() -> str:
-    """Build the async database URL from environment variables.
+def _asyncpg_url(value: str) -> URL:
+    """Normalize the infrastructure PostgreSQL URL to the asyncpg dialect."""
+    url = make_url(value)
+    if url.drivername == "postgresql":
+        url = url.set(drivername="postgresql+asyncpg")
+    if url.drivername != "postgresql+asyncpg":
+        raise ValueError("DATABASE_URL must use PostgreSQL with asyncpg")
+    return url
 
-    Reads the same env vars exposed in ``backend-connections.env.example``.
-    The URL *must* use the ``postgresql+asyncpg://`` scheme.
+
+def create_session_factory(
+    settings: Settings | None = None,
+) -> tuple[AsyncEngine, async_sessionmaker[AsyncSession]]:
+    """Create an engine/factory pair from :class:`Settings`.
+
+    Keeping construction separate makes the database layer testable without
+    mutating the module-level application lifecycle state.
     """
-    import os
-
-    url = os.environ.get("DATABASE_URL", "")
-    # The infra contract provides ``postgresql://`` – we need ``postgresql+asyncpg://``
-    if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
-    if url.startswith("postgresql+asyncpg://"):
-        return url
-
-    # Fallback: construct from individual parts
-    host = os.environ.get("DATABASE_HOST", "localhost")
-    port = os.environ.get("DATABASE_PORT", "5432")
-    name = os.environ.get("DATABASE_NAME", "bank_ai")
-    user = os.environ.get("DATABASE_USER", "bank_app")
-    password = os.environ.get("DATABASE_PASSWORD", "")
-    return f"postgresql+asyncpg://{user}:{password}@{host}:{port}/{name}"
-
-
-async def init_db() -> None:
-    """Create the async engine and session factory.
-
-    Must be called once at application startup (e.g. in FastAPI lifespan).
-    """
-    global async_engine, AsyncSessionFactory  # noqa: PLW0603
-
-    url = _build_url()
-
-    async_engine = create_async_engine(
-        url,
-        echo=False,
-        pool_size=10,
-        max_overflow=20,
+    effective = settings or get_settings()
+    engine = create_async_engine(
+        _asyncpg_url(effective.database_async_url),
+        echo=effective.database_echo,
+        pool_size=effective.database_pool_size,
+        max_overflow=effective.database_pool_max_overflow,
+        pool_timeout=effective.database_pool_timeout,
         pool_pre_ping=True,
         pool_recycle=1800,
     )
-
-    AsyncSessionFactory = async_sessionmaker(
-        bind=async_engine,
+    factory = async_sessionmaker(
+        bind=engine,
         class_=AsyncSession,
         expire_on_commit=False,
+        autoflush=False,
     )
+    return engine, factory
+
+
+async def init_db(settings: Settings | None = None) -> None:
+    """Initialize the process-wide engine and session factory once."""
+    global async_engine, AsyncSessionFactory
+    if async_engine is not None:
+        return
+    async_engine, AsyncSessionFactory = create_session_factory(settings)
 
 
 async def close_db() -> None:
-    """Dispose of the engine connection pool.
-
-    Must be called once at application shutdown (e.g. in FastAPI lifespan).
-    """
-    global async_engine, AsyncSessionFactory  # noqa: PLW0603
-
+    """Dispose the process-wide connection pool."""
+    global async_engine, AsyncSessionFactory
     if async_engine is not None:
         await async_engine.dispose()
-        async_engine = None
+    async_engine = None
     AsyncSessionFactory = None
 
 
-async def get_async_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency that provides an ``AsyncSession``.
-
-    The session is *not* auto-committed; callers are expected to commit
-    explicitly (or use the ``transactional`` helper from ``transaction.py``).
-    """
+async def get_async_session() -> AsyncIterator[AsyncSession]:
+    """FastAPI dependency yielding a rollback-safe async session."""
     if AsyncSessionFactory is None:
-        raise RuntimeError(
-            "Database has not been initialised. Call init_db() first."
-        )
-
+        raise RuntimeError("Database is not initialized; call init_db() first")
     async with AsyncSessionFactory() as session:
         try:
             yield session
-        except Exception:
+        except BaseException:
             await session.rollback()
             raise
-        finally:
-            await session.close()

@@ -166,7 +166,7 @@ services:
       test:
         - CMD-SHELL
         - >-
-          /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
+          unset KAFKA_OPTS && /opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092
           --command-config /tmp/bank-kafka/admin.properties >/dev/null 2>&1
       interval: 10s
       timeout: 10s
@@ -202,6 +202,13 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Generate .env.local}
       MINIO_BROWSER_REDIRECT_URL: http://localhost:9001
       MINIO_PROMETHEUS_AUTH_TYPE: public
+      # Community MinIO supports CORS at server level; per-bucket CORS is an
+      # AIStor-only API in the pinned release.
+      MINIO_API_CORS_ALLOW_ORIGIN: http://localhost:3000
+      # The S3 AbortIncompleteMultipartUpload lifecycle action is unsupported
+      # by MinIO; use its server-wide stale multipart cleanup instead.
+      MINIO_API_STALE_UPLOADS_EXPIRY: 24h
+      MINIO_API_STALE_UPLOADS_CLEANUP_INTERVAL: 6h
     command: server /data --console-address :9001
     ports:
       - 127.0.0.1:9000:9000
@@ -221,7 +228,13 @@ services:
       - no-new-privileges:true
 
   minio-init:
-    image: ${MINIO_MC_IMAGE:?Set MINIO_MC_IMAGE via versions.env}
+    image: ${MINIO_INIT_IMAGE:?Set MINIO_INIT_IMAGE via versions.env}
+    build:
+      context: .
+      dockerfile: minio/Dockerfile
+      args:
+        MINIO_MC_IMAGE: ${MINIO_MC_IMAGE:?Set MINIO_MC_IMAGE via versions.env}
+        CURL_IMAGE: ${CURL_IMAGE:?Set CURL_IMAGE via versions.env}
     profiles: [setup]
     depends_on:
       minio:
@@ -241,6 +254,8 @@ services:
       MINIO_AUDIT_WRITER_ACCESS_KEY: ${MINIO_AUDIT_WRITER_ACCESS_KEY:-audit-writer}
       MINIO_AUDIT_WRITER_SECRET_KEY: ${MINIO_AUDIT_WRITER_SECRET_KEY:?Generate .env.local}
       MINIO_DERIVED_RETENTION_DAYS: ${MINIO_DERIVED_RETENTION_DAYS:-90}
+      MINIO_EXPECTED_CORS_ALLOW_ORIGIN: http://localhost:3000
+      MINIO_EXPECTED_STALE_UPLOADS_EXPIRY: 24h
     entrypoint: [/bin/sh, /opt/bank/minio/bootstrap.sh]
     volumes:
       - ./minio:/opt/bank/minio:ro
