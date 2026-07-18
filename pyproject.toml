@@ -3,14 +3,19 @@ requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "shb-credit-agent"
-version = "1.0.0"
-description = "Framework-neutral SME credit renewal specialist agent"
+name = "duskdash-credit-agent"
+version = "0.1.0"
+description = "DuskDash credit agent prototype for SME credit renewal assessment"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.10,<3",
 ]
+
+[project.urls]
+Homepage = "https://github.com/caochihai/duskdash"
+Repository = "https://github.com/caochihai/duskdash"
+Issues = "https://github.com/caochihai/duskdash/issues"
 
 [project.optional-dependencies]
 api = [
