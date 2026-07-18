@@ -11,6 +11,7 @@ from fastapi import FastAPI
 
 from app.api.router import api_router
 from app.auth.jwt_validator import CachedJwksClient, JWTValidator
+from app.auth.login_rules import LoginRuleEngine
 from app.auth.principal import DenyAllPrincipalResolver, PrincipalResolver
 from app.config import Settings, get_settings
 from app.dependencies import ReadinessProbe, RuntimeAdapterLifecycle, UnconfiguredReadinessProbe
@@ -58,6 +59,7 @@ def create_app(
         application.state.storage = storage_adapter
         application.state.redis = redis_adapter
         application.state.conversation_responder = None
+        application.state.login_rules = LoginRuleEngine.from_settings(runtime_settings)
         if effective_runtime is not None:
             await effective_runtime.start(application, runtime_settings)
 

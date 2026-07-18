@@ -76,9 +76,14 @@ async def update_conversation(
     principal: PrincipalDep,
     service: Annotated[ConversationService, Depends(get_conversation_service)],
 ) -> ConversationResponse:
-    return ConversationResponse.model_validate(
-        await service.update_title(principal, conversation_id, title=body.title)
-    )
+    row = None
+    if body.active_customer_id is not None:
+        row = await service.set_active_customer(
+            principal, conversation_id, customer_id=body.active_customer_id
+        )
+    if body.title is not None:
+        row = await service.update_title(principal, conversation_id, title=body.title)
+    return ConversationResponse.model_validate(row)
 
 
 @router.post("/{conversation_id}/close", response_model=ConversationResponse)

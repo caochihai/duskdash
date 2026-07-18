@@ -15,18 +15,32 @@ function getKeycloak(): Keycloak {
   return keycloak;
 }
 
-/** Initialize Authorization Code + PKCE before protected API queries run. */
+/**
+ * Khởi tạo Authorization Code + PKCE ở chế độ check-sso: chỉ KIỂM TRA phiên,
+ * không ép chuyển hướng. Người chưa đăng nhập được RequireAuth đưa về /login.
+ */
 export async function initializeAuthentication(): Promise<void> {
   if (useMockApi) return;
 
   const client = getKeycloak();
-  const authenticated = await client.init({
-    onLoad: 'login-required',
+  await client.init({
+    onLoad: 'check-sso',
+    silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
     pkceMethod: 'S256',
     checkLoginIframe: false,
   });
+}
 
-  if (!authenticated) await client.login();
+/** Mock mode luôn coi là đã đăng nhập để demo giao diện không cần Keycloak. */
+export function isAuthenticated(): boolean {
+  if (useMockApi) return true;
+  return keycloak?.authenticated === true;
+}
+
+/** Chuyển hướng sang Keycloak; sau khi đăng nhập quay lại đúng trang yêu cầu. */
+export async function login(returnTo = '/'): Promise<void> {
+  const client = getKeycloak();
+  await client.login({ redirectUri: `${window.location.origin}${returnTo}` });
 }
 
 /** Return a short-lived in-memory token; tokens are never written to browser storage. */
@@ -45,5 +59,5 @@ export function getAuthenticatedClaims(): KeycloakTokenParsed | undefined {
 
 export async function logout(): Promise<void> {
   if (!keycloak) return;
-  await keycloak.logout({ redirectUri: window.location.origin });
+  await keycloak.logout({ redirectUri: `${window.location.origin}/login` });
 }

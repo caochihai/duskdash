@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -119,7 +120,7 @@ class ReportRepository:
                 available_at, created_at
             ) VALUES (
                 :outbox_id, 'REPORT', :report_id,
-                'report.generation.requested', 1, CAST(:report_id AS text),
+                'report.generation.requested', 1, :partition_key,
                 CAST(:event AS jsonb), CAST(:headers AS jsonb),
                 'PENDING', 0, :now, :now
             ) RETURNING id
@@ -127,6 +128,7 @@ class ReportRepository:
             {
                 "outbox_id": outbox_id,
                 "report_id": report_id,
+                "partition_key": str(report_id),
                 "event": event,
                 "headers": headers,
                 "now": now,

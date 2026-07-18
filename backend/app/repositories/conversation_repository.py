@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -121,6 +122,28 @@ class ConversationRepository:
                 "conversation_id": conversation_id,
                 "employee_id": employee_id,
                 "ended_at": datetime.now(UTC),
+            },
+        )
+
+    async def set_active_customer(
+        self,
+        conversation_id: UUID,
+        *,
+        employee_id: UUID,
+        customer_id: UUID,
+    ) -> Record | None:
+        return await execute_returning(
+            self.session,
+            """
+            UPDATE ai.conversation
+            SET active_customer_id = :customer_id
+            WHERE id = :conversation_id AND employee_id = :employee_id
+            RETURNING *
+            """,
+            {
+                "conversation_id": conversation_id,
+                "employee_id": employee_id,
+                "customer_id": customer_id,
             },
         )
 

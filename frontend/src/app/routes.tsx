@@ -1,18 +1,26 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, type RouteObject } from 'react-router-dom';
 import { LoadingScreen } from '@/components/common/LoadingScreen';
+import { RequireAuth } from '@/auth/RequireAuth';
 import ChatPage from '@/pages/ChatPage';
 
 /**
  * Khai báo route TẬP TRUNG.
  * Không khai báo route rải rác trong component.
  *
- * - `/`  : giao diện chính SH-AI.
- *          Query param `?view=foundation` hiển thị FoundationPage (kiểm thử nền tảng).
- * - `*`  : trang không tìm thấy.
+ * - `/login`        : trang đăng nhập (route công khai duy nhất).
+ * - `/` và `/chat`  : giao diện trò chuyện chính SH-AI.
+ * - `/dashboard`    : bảng điều khiển agent.
+ * - `/customer/:id` : hồ sơ chi tiết khách hàng.
+ * - `/foundation`   : trang kiểm thử nền tảng.
+ * - `*`             : trang không tìm thấy.
+ *
+ * Mọi route nghiệp vụ đều bọc RequireAuth: chưa đăng nhập sẽ được đưa về
+ * `/login?returnTo=...` và quay lại đúng trang sau khi xác thực.
  */
 
 // Lazy-load các trang phụ: chúng không nằm trên đường đi chính của người dùng.
+const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const FoundationPage = lazy(() => import('@/pages/FoundationPage'));
 const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 const AgentDashboardPage = lazy(() => import('@/pages/AgentDashboardPage'));
@@ -22,22 +30,34 @@ function withSuspense(node: React.ReactNode) {
   return <Suspense fallback={<LoadingScreen message="Đang tải trang" />}>{node}</Suspense>;
 }
 
+function protectedPage(node: React.ReactNode) {
+  return <RequireAuth>{node}</RequireAuth>;
+}
+
 export const routeObjects: RouteObject[] = [
   {
+    path: '/login',
+    element: withSuspense(<LoginPage />),
+  },
+  {
     path: '/',
-    element: <ChatPage />,
+    element: protectedPage(<ChatPage />),
+  },
+  {
+    path: '/chat',
+    element: protectedPage(<ChatPage />),
   },
   {
     path: '/dashboard',
-    element: withSuspense(<AgentDashboardPage />),
+    element: protectedPage(withSuspense(<AgentDashboardPage />)),
   },
   {
     path: '/customer/:id',
-    element: withSuspense(<CustomerDetailPage />),
+    element: protectedPage(withSuspense(<CustomerDetailPage />)),
   },
   {
     path: '/foundation',
-    element: withSuspense(<FoundationPage />),
+    element: protectedPage(withSuspense(<FoundationPage />)),
   },
   {
     path: '*',

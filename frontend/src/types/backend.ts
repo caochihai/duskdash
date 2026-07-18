@@ -89,6 +89,8 @@ export interface BackendAssignmentLease {
 
 export interface BackendUploadSession {
   upload_id: string;
+  /** Khách hàng gắn với hồ sơ — backend tự tạo khách nháp nếu request không truyền. */
+  customer_id: string;
   status: string;
   upload_url: string;
   headers: Record<string, string>;

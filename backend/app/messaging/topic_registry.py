@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
+from app.compat import StrEnum
 from types import MappingProxyType
 from typing import Final
 

@@ -2,7 +2,7 @@
 name = "bank-ai-backend"
 version = "0.1.0"
 description = "AI Credit Intelligence Workbench - Backend API"
-requires-python = ">=3.12"
+requires-python = ">=3.10"
 license = { text = "Proprietary" }
 
 dependencies = [
@@ -21,6 +21,7 @@ dependencies = [
     "uvicorn>=0.34.0",
     "python-multipart>=0.0.20",
     "pgvector>=0.3.6",
+    "pillow>=11.0.0",
 ]
 
 [project.scripts]

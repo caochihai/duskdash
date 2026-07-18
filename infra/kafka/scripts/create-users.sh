@@ -29,7 +29,11 @@ for principal in "${principals[@]}"; do
   password="$(principal_password "$principal")"
   reject_multiline "Kafka username for $principal" "$username"
   reject_multiline "Kafka password for $principal" "$password"
-  escaped_password="$(scram_escape "$password")"
+  # kafka-configs stores the bracketed value verbatim (quotes are NOT stripped,
+  # unlike kafka-storage format), so the password must appear unquoted here.
+  # Generated secrets are base64url ([A-Za-z0-9_-]) and never need quoting.
+  [[ "$password" =~ ^[A-Za-z0-9_-]+$ ]] || \
+    fail "Kafka password for $principal contains characters unsupported by unquoted SCRAM config"
 
   log "reconciling SCRAM-SHA-512 credential for $username"
   "$KAFKA_BIN_DIR/kafka-configs.sh" \
@@ -38,7 +42,7 @@ for principal in "${principals[@]}"; do
     --alter \
     --entity-type users \
     --entity-name "$username" \
-    --add-config "SCRAM-SHA-512=[iterations=8192,password=\"$escaped_password\"]" >/dev/null
+    --add-config "SCRAM-SHA-512=[iterations=8192,password=$password]" >/dev/null
 done
 
 log 'all Kafka SCRAM users are present'

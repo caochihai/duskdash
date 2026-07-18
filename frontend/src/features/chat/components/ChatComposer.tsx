@@ -27,6 +27,8 @@ export interface ChatComposerProps {
   customers?: Customer[];
   /** Gọi khi chuyên viên chọn một khách hàng từ popup `/`. */
   onSelectCustomer?: (customer: Customer) => void;
+  /** Gọi khi upload hồ sơ chưa gắn khách hàng và backend đã tự tạo khách nháp. */
+  onCustomerAutoCreated?: (customerId: string) => void;
   uploadContext?: { customerId?: string; loanApplicationId?: string };
 }
 
@@ -53,6 +55,7 @@ export function ChatComposer({
   placeholder = 'Hỏi SH-AI, hoặc gõ / để tra cứu khách hàng...',
   customers = [],
   onSelectCustomer,
+  onCustomerAutoCreated,
   uploadContext,
 }: ChatComposerProps) {
   const { message: messageApi } = App.useApp();
@@ -98,8 +101,13 @@ export function ChatComposer({
           customerId: uploadContext?.customerId,
           loanApplicationId: uploadContext?.loanApplicationId,
         });
-        // Giữ nguyên id cục bộ để tránh nhảy key trong danh sách.
-        updateAttachment(id, { ...uploaded, id });
+        // Giữ id cục bộ làm khoá React; UUID document thật nằm ở documentId.
+        updateAttachment(id, { ...uploaded, id, documentId: uploaded.id });
+        // Upload khi chưa chọn khách hàng -> backend đã tự tạo khách nháp;
+        // báo lên trên để gắn khách hàng đó vào phiên chat.
+        if (!uploadContext?.customerId && uploaded.customerId) {
+          onCustomerAutoCreated?.(uploaded.customerId);
+        }
       } catch (error) {
         if (controller.signal.aborted) return;
         updateAttachment(id, { status: 'error', errorMessage: getErrorMessage(error) });
@@ -107,7 +115,7 @@ export function ChatComposer({
         uploadControllersRef.current.delete(id);
       }
     },
-    [updateAttachment, uploadContext],
+    [updateAttachment, uploadContext, onCustomerAutoCreated],
   );
 
   const handleAddFile = useCallback(

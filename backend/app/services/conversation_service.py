@@ -241,6 +241,24 @@ class ConversationService:
             raise RuntimeError("Conversation changed concurrently")
         return row
 
+    async def set_active_customer(
+        self,
+        principal: PrincipalLike,
+        conversation_id: UUID,
+        *,
+        customer_id: UUID,
+    ) -> Mapping[str, Any]:
+        """Gắn khách hàng vào hội thoại đang mở (vd: khách nháp vừa tạo từ upload)."""
+        await self.get(principal, conversation_id)
+        row = await self._repository.set_active_customer(
+            conversation_id,
+            employee_id=principal.employee_id,
+            customer_id=customer_id,
+        )
+        if row is None:
+            raise RuntimeError("Conversation changed concurrently")
+        return row
+
     async def update_title(
         self,
         principal: PrincipalLike,
@@ -277,8 +295,14 @@ class ConversationService:
         assignment_lease_token: str | None = None,
     ) -> Mapping[str, Any]:
         clean_content = content.strip()
-        if not clean_content or len(clean_content) > 8000:
+        if len(clean_content) > 8000:
             raise ValueError("Message must contain 1 to 8000 characters")
+        if not clean_content:
+            if not attachment_ids:
+                raise ValueError("Message must contain 1 to 8000 characters")
+            # Gửi hồ sơ không kèm câu hỏi -> responder tự phân tích và
+            # đề xuất câu hỏi tiếp theo cho cán bộ.
+            clean_content = "(Gửi hồ sơ đính kèm — nhờ SH-AI phân tích và gợi ý)"
         conversation = await self.get(principal, conversation_id)
         if str(conversation.get("status", "")).upper() == "CLOSED":
             raise ValueError("Cannot add a message to a closed conversation")
@@ -296,9 +320,13 @@ class ConversationService:
         route["attachment_ids"] = normalized_attachment_ids
 
         protected_analysis_routes = {"SINGLE_AGENT", "ORCHESTRATED"}
+        # Tin nhắn kèm hồ sơ đi đường đọc-tài-liệu (highlight) của responder,
+        # không chạy phân tích sâu — guard phân công khách hàng chỉ áp cho
+        # yêu cầu phân tích không kèm tài liệu.
         if (
             self._responder is not None
             and str(route.get("route_type")) in protected_analysis_routes
+            and not normalized_attachment_ids
         ):
             require_permission(principal, "loan:analyze")
             if self._processing_guard is None:

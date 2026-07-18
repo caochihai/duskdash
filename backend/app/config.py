@@ -40,6 +40,17 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:3000"]
     )
 
+    # Agentic Core Engine (optional; unset keeps deep analysis on the single LLM).
+    agent_engine_url: str | None = None
+    agent_engine_business_id: str = "B001"
+    agent_engine_wait_seconds: int = Field(default=90, ge=10, le=570)
+
+    # Rule-based account gate (all optional; an empty value disables that rule).
+    login_rules_deny_usernames: str = ""
+    login_rules_allow_username_patterns: str = ""
+    login_rules_required_roles: str = ""
+    login_rules_access_window_utc: str = ""
+
     # PostgreSQL contract.
     database_host: str = "localhost"
     database_port: int = Field(default=5432, ge=1, le=65535)
@@ -101,6 +112,9 @@ class Settings(BaseSettings):
     llm_api_url: str | None = None
     llm_api_key: SecretStr | None = None
     llm_model_name: str = "mock-model"
+    # gemma-4-31B-it thắng benchmark OCR nội bộ (CER 0.004, Numeric Acc 97%);
+    # Qwen2.5-VL nhanh hơn nhưng có lỗi đơn vị tiền tệ nguy hiểm.
+    vision_model_name: str = "gemma-4-31B-it"
     embedding_provider: str = "mock"
     embedding_api_url: str | None = None
     embedding_api_key: SecretStr | None = None

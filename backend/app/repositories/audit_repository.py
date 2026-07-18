@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from hashlib import sha256
 from typing import Any
 from uuid import UUID, uuid4

@@ -11,7 +11,7 @@ from __future__ import annotations
 import re
 from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from datetime import date
-from enum import StrEnum
+from app.compat import StrEnum
 from typing import Any, Literal
 from uuid import UUID
 

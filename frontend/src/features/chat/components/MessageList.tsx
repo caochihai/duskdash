@@ -22,6 +22,7 @@ export interface MessageListProps {
   onViewSources?: (message: ChatMessage) => void;
   busy?: boolean;
   onViewCustomer?: (customerId: string) => void;
+  onOpenHighlightDocument?: (doc: { name: string; url: string }) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,
@@ -55,6 +56,7 @@ export function MessageList({
   onViewSources,
   busy = false,
   onViewCustomer,
+  onOpenHighlightDocument,
   onLoanDecision,
 }: MessageListProps) {
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -124,6 +126,7 @@ export function MessageList({
               onViewSources={onViewSources}
               busy={busy}
               onViewCustomer={onViewCustomer}
+              onOpenHighlightDocument={onOpenHighlightDocument}
               onLoanDecision={onLoanDecision}
             />
           ),

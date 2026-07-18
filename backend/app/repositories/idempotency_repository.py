@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
+from app.compat import UTC
 from typing import Any
 from uuid import UUID, uuid4
 

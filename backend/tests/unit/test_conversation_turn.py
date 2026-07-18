@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -308,9 +309,9 @@ async def test_responder_persists_parented_assistant_message_and_structured_repl
     assert responder.calls[0]["attachment_ids"] == tuple(
         employee_message["attachment_ids"]
     )
-    assert processing_guard.calls[0]["lease_token"] == (
-        "lease-token-owned-by-this-employee-123456"
-    )
+    # Tin nhắn kèm hồ sơ đi đường đọc-tài-liệu của responder nên guard phân
+    # công khách hàng KHÔNG chạy (guard chỉ áp cho phân tích sâu không kèm file).
+    assert processing_guard.calls == []
     assert assistant_message["sender_type"] == "ASSISTANT"
     assert assistant_message["sender_id"] is None
     assert assistant_message["parent_message_id"] == employee_message["id"]

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from enum import StrEnum
+from app.compat import StrEnum
 from typing import Protocol
 from uuid import UUID
 

@@ -1,0 +1,88 @@
+/* SHB login theme — phủ nhận diện SHB lên keycloak.v2 (PatternFly v5, nền sáng ấm). */
+
+:root {
+  --pf-v5-global--primary-color--100: #F37021;
+  --pf-v5-global--primary-color--200: #DD5A12;
+  --pf-v5-global--primary-color--dark-100: #DD5A12;
+  --pf-v5-global--link--Color: #B9450C;
+  --pf-v5-global--link--Color--hover: #93370D;
+  --pf-v5-global--FontFamily--text: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+  /* Keycloak vẽ nền trang từ biến này (mặc định là ảnh polygon tối)
+     và thanh màu trên card từ --keycloak-card-top-color. */
+  --keycloak-bg-logo-url: linear-gradient(165deg, #fffdf9 0%, #f7f5f1 100%);
+  --keycloak-card-top-color: #F37021;
+}
+
+/* Nền: gradient ấm SHB thay ảnh polygon tối mặc định (.login-pf body). */
+.login-pf body {
+  background:
+    radial-gradient(80rem 40rem at 85% -10%, #feebdd 0%, rgba(254, 235, 221, 0) 60%),
+    radial-gradient(60rem 30rem at 0% 110%, #fdd3b5 0%, rgba(253, 211, 181, 0) 55%),
+    linear-gradient(165deg, #fffdf9 0%, #f7f5f1 100%) fixed !important;
+}
+
+/* Header: logo SHB + tên hệ thống màu indigo thương hiệu. */
+.pf-v5-c-login__header {
+  text-align: center;
+}
+
+.pf-v5-c-login__header::before {
+  content: '';
+  display: block;
+  height: 56px;
+  margin: 0 auto 14px;
+  background: url('../img/shb-logo.svg') no-repeat center / contain;
+}
+
+#kc-header-wrapper,
+.pf-v5-c-login__header,
+.pf-v5-c-login__header h1,
+.pf-v5-c-brand {
+  color: #2f2e79 !important;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* Card đăng nhập: trắng, bo góc; thanh cam trên đỉnh đã do
+   --keycloak-card-top-color đảm nhận (tránh hai thanh chồng nhau). */
+.pf-v5-c-login__main {
+  background: #ffffff;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 24px 48px -12px rgba(24, 33, 43, 0.18);
+  color: #18212b;
+}
+
+.pf-v5-c-login__main .pf-v5-c-title,
+#kc-page-title {
+  color: #2f2e79;
+}
+
+.pf-v5-c-form__label-text {
+  color: #18212b;
+}
+
+/* Ô nhập liệu. */
+.pf-v5-c-form-control {
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.pf-v5-c-form-control:focus-within {
+  --pf-v5-c-form-control--m-focus--BorderBottomColor: #f37021;
+}
+
+/* Nút đăng nhập: cam SHB. */
+.pf-v5-c-button.pf-m-primary {
+  background-color: #f37021;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.pf-v5-c-button.pf-m-primary:hover {
+  background-color: #dd5a12;
+}
+
+.pf-v5-c-button.pf-m-primary:active {
+  background-color: #b9450c;
+}

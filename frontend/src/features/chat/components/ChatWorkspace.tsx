@@ -32,6 +32,10 @@ export interface ChatWorkspaceProps {
   /** Danh sách khách hàng cho lệnh `/` trong composer. */
   customers?: Customer[];
   onSelectCustomer?: (customer: Customer) => void;
+  /** Backend tự tạo khách hàng nháp khi upload hồ sơ chưa gắn khách. */
+  onCustomerAutoCreated?: (customerId: string) => void;
+  /** Bấm thumbnail hồ sơ highlight trong chat -> mở ở panel bên phải. */
+  onOpenHighlightDocument?: (doc: { name: string; url: string }) => void;
   onViewCustomer?: (customerId: string) => void;
   onLoanDecision?: (
     application: LoanApplication,
@@ -64,6 +68,8 @@ export function ChatWorkspace({
   staffName,
   customers,
   onSelectCustomer,
+  onCustomerAutoCreated,
+  onOpenHighlightDocument,
   onViewCustomer,
   onLoanDecision,
   uploadContext,
@@ -104,6 +110,7 @@ export function ChatWorkspace({
               onViewSources={onViewSources}
               busy={isStreaming}
               onViewCustomer={onViewCustomer}
+              onOpenHighlightDocument={onOpenHighlightDocument}
               onLoanDecision={onLoanDecision}
             />
           </motion.div>
@@ -119,6 +126,7 @@ export function ChatWorkspace({
         disabled={composerDisabled}
         customers={customers}
         onSelectCustomer={onSelectCustomer}
+        onCustomerAutoCreated={onCustomerAutoCreated}
         uploadContext={uploadContext}
       />
     </div>

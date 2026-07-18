@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from types import SimpleNamespace
 from typing import Any
 from uuid import UUID, uuid4

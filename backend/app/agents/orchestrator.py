@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from enum import StrEnum
+from app.compat import StrEnum
 from uuid import UUID, uuid5
 
 from pydantic import BaseModel, ConfigDict

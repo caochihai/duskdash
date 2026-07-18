@@ -17,16 +17,13 @@ export async function uploadAttachment(
 ): Promise<ChatAttachment> {
   if (USE_MOCK_API) return mockUploadAttachment(file, options);
 
-  if (!options.customerId) {
-    throw new Error('Vui lòng chọn khách hàng trước khi tải tài liệu.');
-  }
-
   options.onProgress?.(5);
   const expectedSha256 = await sha256Hex(file);
+  // Không truyền customer_id -> backend tự tạo khách hàng nháp từ hồ sơ.
   const upload = await apiClient.post<BackendUploadSession>(
     '/documents/uploads',
     {
-      customer_id: options.customerId,
+      customer_id: options.customerId ?? null,
       loan_application_id: options.loanApplicationId,
       original_filename: file.name,
       expected_mime_type: file.type || 'application/octet-stream',
@@ -67,6 +64,7 @@ export async function uploadAttachment(
     size: file.size,
     status: 'done',
     progress: 100,
+    customerId: upload.data.customer_id,
   };
 }
 

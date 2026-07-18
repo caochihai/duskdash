@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Annotated, Any
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from app.schemas.document import (
     UploadCreateRequest,
     UploadResponse,
 )
+from app.repositories.customer_repository import CustomerRepository
 from app.services.document_service import DocumentService
 from app.services.upload_service import UploadService
 
@@ -41,17 +43,19 @@ async def create_upload(
     session: SessionDep,
 ) -> UploadResponse:
     payload = body.model_dump(mode="json", exclude_none=True)
-    row = await execute_idempotent(
-        session=session,
-        actor_id=principal.employee_id,
-        operation_name="CREATE_DOCUMENT_UPLOAD",
-        idempotency_key=idempotency_key,
-        request_payload=payload,
-        response_status=status.HTTP_201_CREATED,
-        resource_type="UPLOAD_SESSION",
-        operation=lambda: service.create_upload(
+
+    async def _create_upload() -> Mapping[str, Any]:
+        customer_id = body.customer_id
+        if customer_id is None:
+            # Upload không gắn khách hàng -> tự tạo khách hàng nháp; tên thật
+            # sẽ được vision-LLM cập nhật từ nội dung hồ sơ.
+            draft = await CustomerRepository(session).create_draft(
+                employee_id=principal.employee_id, branch_id=principal.branch_id
+            )
+            customer_id = draft["id"]
+        return await service.create_upload(
             principal,
-            customer_id=body.customer_id,
+            customer_id=customer_id,
             loan_application_id=body.loan_application_id,
             expected_document_type=body.expected_document_type,
             original_filename=body.original_filename,
@@ -60,7 +64,17 @@ async def create_upload(
             expected_sha256=body.expected_sha256,
             idempotency_key=idempotency_key,
             request_id=request_uuid(request),
-        ),
+        )
+
+    row = await execute_idempotent(
+        session=session,
+        actor_id=principal.employee_id,
+        operation_name="CREATE_DOCUMENT_UPLOAD",
+        idempotency_key=idempotency_key,
+        request_payload=payload,
+        response_status=status.HTTP_201_CREATED,
+        resource_type="UPLOAD_SESSION",
+        operation=_create_upload,
     )
     return UploadResponse.model_validate(row)
 
@@ -92,7 +106,10 @@ async def complete_upload(
             request_id=request_uuid(request),
         ),
     )
-    return UploadCompleteResponse.model_validate(row)
+    # Repository trả khoá chính là "id"; response contract dùng "upload_id".
+    payload = dict(row)
+    payload.setdefault("upload_id", payload.get("id"))
+    return UploadCompleteResponse.model_validate(payload)
 
 
 @documents_router.get("/{document_id}", response_model=DocumentResponse)

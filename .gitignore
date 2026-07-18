@@ -86,3 +86,13 @@ terraform.rc
 
 # Docker / local runtime
 docker-compose*.override.yml
+
+# Claude Code local config (allowlist có thể chứa API key) — không bao giờ commit
+.claude/
+
+# Ảnh Zalo gốc rơi ở root (bản chuẩn nằm trong agent_engine/sample_docs/)
+/z*.jpg
+
+# Agent engine local runtime
+agent_engine/data/
+agent_engine/logs/

@@ -7,7 +7,8 @@ before related, otherwise-unprotected child rows are returned.
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from datetime import UTC, datetime
+from datetime import datetime
+from app.compat import UTC
 from typing import Any
 from uuid import UUID, uuid4
 

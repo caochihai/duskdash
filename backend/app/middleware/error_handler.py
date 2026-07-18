@@ -61,13 +61,14 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(PermissionError)
     async def handle_permission_error(request: Request, exc: PermissionError) -> JSONResponse:
-        del exc
+        # Ghi log lý do để 403 trace được từ phía server (message không chứa nội bộ).
+        logger.info("ACCESS_DENIED", path=request.url.path, reason=str(exc))
         return _response(
             request,
             status=403,
             code="ACCESS_DENIED",
             message="You do not have permission to access this resource.",
-            details={},
+            details={"reason": str(exc)},
         )
 
     @app.exception_handler(LookupError)
@@ -83,13 +84,16 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ValueError)
     async def handle_value_error(request: Request, exc: ValueError) -> JSONResponse:
-        del exc
+        # ValueError trong service là thông điệp validation viết cho người dùng
+        # (không chứa nội bộ hệ thống) — trả về cho client và ghi log để trace
+        # được nguyên nhân 422 từ phía server.
+        logger.info("VALIDATION_REJECTED", path=request.url.path, reason=str(exc))
         return _response(
             request,
             status=422,
             code="VALIDATION_FAILED",
             message="The request is invalid.",
-            details={},
+            details={"reason": str(exc)},
         )
 
     @app.exception_handler(TimeoutError)
