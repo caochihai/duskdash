@@ -26,9 +26,19 @@ logger = get_logger(__name__)
 _MAX_IMAGES = 5
 _MAX_IMAGE_BYTES = 8 * 1024 * 1024
 
-_LEVEL_ICON = {"critical": "🔴", "warning": "🟠", "emphasis": "🟡"}
-_LEVEL_LABEL = {"critical": "CẢNH BÁO", "warning": "CẦN CHÚ Ý", "emphasis": "NHẤN MẠNH"}
-_LEVEL_COLOR = {"critical": (220, 38, 38), "warning": (243, 112, 33), "emphasis": (234, 179, 8)}
+_LEVEL_ICON = {"critical": "🔴", "warning": "🟠", "emphasis": "🟡", "pass": "✅"}
+_LEVEL_LABEL = {
+    "critical": "CẢNH BÁO",
+    "warning": "CẦN CHÚ Ý",
+    "emphasis": "NHẤN MẠNH",
+    "pass": "ĐẠT ĐIỀU KIỆN",
+}
+_LEVEL_COLOR = {
+    "critical": (220, 38, 38),
+    "warning": (243, 112, 33),
+    "emphasis": (234, 179, 8),
+    "pass": (34, 197, 94),
+}
 
 _SYSTEM_PROMPT = (
     "Bạn là chuyên gia thẩm định hồ sơ ngân hàng SHB. Nhiệm vụ: đọc (các) ảnh "
@@ -37,13 +47,23 @@ _SYSTEM_PROMPT = (
     "- CÂU HỎI của cán bộ (điều họ đang cần tìm);\n"
     "- DỮ LIỆU KHÁCH HÀNG trong hệ thống (đối chiếu khớp/lệch);\n"
     "- LỊCH SỬ HỘI THOẠI (những mối quan tâm đã nêu trước đó).\n"
-    "Mức độ: 'critical' = sai lệch/rủi ro/mâu thuẫn với dữ liệu hệ thống; "
+    "Mức độ: 'critical' = sai lệch/rủi ro/vi phạm quy định; "
     "'warning' = cần kiểm tra thêm hoặc liên quan trực tiếp câu hỏi; "
-    "'emphasis' = thông tin chính đáng lưu ý. Chỉ đánh dấu đoạn thực sự "
-    "đáng chú ý, không đánh dấu tràn lan.\n"
+    "'emphasis' = thông tin chính đáng lưu ý; "
+    "'pass' = nội dung ĐÃ THOẢ MÃN điều kiện/quy định (hãy chủ động đánh dấu "
+    "cả những phần đạt chuẩn để cán bộ yên tâm bỏ qua). Chỉ đánh dấu đoạn "
+    "thực sự đáng chú ý, không đánh dấu tràn lan.\n"
+    "MỌI highlight đều phải có CĂN CỨ PHÁP LÝ trong legal_basis: nêu văn bản "
+    "pháp luật/quy định áp dụng (vd: Thông tư 39/2016/TT-NHNN về hoạt động "
+    "cho vay; Thông tư 11/2021/TT-NHNN về phân loại nợ; Luật Các TCTD 2024; "
+    "Luật Phòng chống rửa tiền 2022; chuẩn mực kế toán VAS). CHỈ nêu văn bản "
+    "có thật và đúng phạm vi áp dụng; nếu không chắc văn bản nào, ghi "
+    "'Cần đối chiếu quy định nội bộ SHB'.\n"
     "Với mỗi đoạn đánh dấu trên ảnh, cung cấp bbox_2d = [x1, y1, x2, y2] theo "
-    "thang 0-1000 so với kích thước ảnh (góc trên-trái là 0,0). Nếu không "
-    "định vị được thì để bbox_2d = null.\n"
+    "thang 0-1000 so với kích thước ảnh: (0,0) là góc trên-trái, x tăng sang "
+    "phải, y tăng xuống dưới; y1/y2 phải bao TRỌN chiều cao của dòng chữ liên "
+    "quan (vị trí dọc phải thật chính xác). Nếu không định vị được thì để "
+    "bbox_2d = null.\n"
     "Nếu hồ sơ ghi rõ họ tên khách hàng, điền vào extracted_customer_name "
     "(đúng nguyên văn, không suy đoán).\n"
     "Luôn đề xuất 3-5 câu hỏi tiếp theo trong suggested_questions — những câu "
@@ -56,8 +76,13 @@ _SYSTEM_PROMPT = (
 class HighlightSegment(BaseModel):
     document_index: int = Field(ge=0, description="Ảnh thứ mấy (0-based)")
     text: str = Field(min_length=1, max_length=2000)
-    level: str = Field(pattern="^(critical|warning|emphasis)$")
+    level: str = Field(pattern="^(critical|warning|emphasis|pass)$")
     reason: str = Field(min_length=1, max_length=500)
+    legal_basis: str | None = Field(
+        default=None,
+        max_length=300,
+        description="Văn bản pháp luật/quy định làm căn cứ cho highlight này",
+    )
     bbox_2d: list[int] | None = Field(default=None, description="[x1,y1,x2,y2] thang 0-1000")
 
 
@@ -93,6 +118,8 @@ def render_highlight_markdown(result: HighlightResult, links: list[AnnotatedImag
             label = _LEVEL_LABEL.get(segment.level, segment.level)
             lines.append(f"> {icon} **[{label}]** “{segment.text}”")
             lines.append(f"> ↳ _{segment.reason}_")
+            if segment.legal_basis:
+                lines.append(f"> ⚖️ Căn cứ: {segment.legal_basis}")
             lines.append(">")
     # Ảnh đã highlight không chèn link vào text — client render gallery riêng
     # từ metadata.highlight_documents (chat giữ vai trò tương tác thuần).
@@ -171,19 +198,24 @@ class DocumentHighlighter:
                 image = Image.open(io.BytesIO(images[index])).convert("RGB")
                 overlay = ImageDraw.Draw(image, "RGBA")
                 width, height = image.size
+                margin = max(4, width // 60)
                 for segment in segments:
                     x1, y1, x2, y2 = segment.bbox_2d  # type: ignore[misc]
-                    box = (
-                        max(0, min(x1, x2) * width // 1000),
-                        max(0, min(y1, y2) * height // 1000),
-                        min(width, max(x1, x2) * width // 1000),
-                        min(height, max(y1, y2) * height // 1000),
-                    )
-                    if box[2] - box[0] < 4 or box[3] - box[1] < 4:
-                        continue
+                    # Vision model bắt vị trí DỌC của dòng khá chuẩn nhưng hay
+                    # lệch toạ độ ngang -> vẽ dải highlight full chiều ngang
+                    # theo dòng (kiểu bút dạ quang), nới nhẹ chiều cao cho dễ đọc.
+                    top = max(0, min(y1, y2) * height // 1000 - height // 200)
+                    bottom = min(height, max(y1, y2) * height // 1000 + height // 200)
+                    if bottom - top < 6:
+                        bottom = min(height, top + max(6, height // 90))
+                    band = (margin, top, width - margin, bottom)
                     color = _LEVEL_COLOR.get(segment.level, (243, 112, 33))
-                    overlay.rectangle(box, outline=color + (255,), width=max(3, width // 300))
-                    overlay.rectangle(box, fill=color + (40,))
+                    overlay.rectangle(band, fill=color + (46,))
+                    # Vạch màu đậm sát mép trái như tab đánh dấu mức độ.
+                    overlay.rectangle(
+                        (margin, top, margin + max(6, width // 150), bottom),
+                        fill=color + (230,),
+                    )
                 buffer = io.BytesIO()
                 image.save(buffer, format="JPEG", quality=90)
                 key = f"highlights/{conversation_id}/{uuid.uuid4().hex}-{index}.jpg"
