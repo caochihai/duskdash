@@ -67,6 +67,11 @@ export function ChatComposer({
 
   // Huỷ mọi upload đang chạy khi composer unmount.
   const uploadControllersRef = useRef(new Map<string, AbortController>());
+  // Khi up nhiều ảnh mà CHƯA chọn khách hàng: ảnh đầu tạo khách nháp, các ảnh
+  // sau phải dùng LẠI đúng khách đó (không mỗi ảnh một khách). Chuỗi promise
+  // để upload tuần tự, ref giữ customerId đã tạo trong batch.
+  const batchCustomerRef = useRef<string | undefined>(undefined);
+  const uploadChainRef = useRef<Promise<void>>(Promise.resolve());
 
   useEffect(() => {
     const controllers = uploadControllersRef.current;
@@ -95,17 +100,21 @@ export function ChatComposer({
       uploadControllersRef.current.set(id, controller);
 
       try {
+        // Khách hàng dùng cho ảnh này: ưu tiên khách đã chọn, rồi tới khách
+        // nháp mà ảnh trước trong batch vừa tạo — để cả batch về CÙNG một khách.
+        const customerId = uploadContext?.customerId ?? batchCustomerRef.current;
         const uploaded = await uploadAttachment(file, {
           signal: controller.signal,
           onProgress: (percent) => updateAttachment(id, { progress: percent }),
-          customerId: uploadContext?.customerId,
+          customerId,
           loanApplicationId: uploadContext?.loanApplicationId,
         });
         // Giữ id cục bộ làm khoá React; UUID document thật nằm ở documentId.
         updateAttachment(id, { ...uploaded, id, documentId: uploaded.id });
-        // Upload khi chưa chọn khách hàng -> backend đã tự tạo khách nháp;
-        // báo lên trên để gắn khách hàng đó vào phiên chat.
-        if (!uploadContext?.customerId && uploaded.customerId) {
+        // Ảnh ĐẦU của batch (chưa chọn khách) tạo khách nháp -> nhớ lại cho các
+        // ảnh sau và báo lên trên đúng MỘT lần để gắn vào phiên chat.
+        if (!customerId && uploaded.customerId) {
+          batchCustomerRef.current = uploaded.customerId;
           onCustomerAutoCreated?.(uploaded.customerId);
         }
       } catch (error) {
@@ -160,7 +169,15 @@ export function ChatComposer({
         },
       ]);
 
-      void runUpload(id, file);
+      // Nối vào chuỗi: khi CHƯA chọn khách, các upload chạy tuần tự để ảnh đầu
+      // kịp tạo khách nháp trước khi ảnh sau gọi backend (tránh nhiều khách).
+      if (uploadContext?.customerId) {
+        void runUpload(id, file);
+      } else {
+        uploadChainRef.current = uploadChainRef.current
+          .catch(() => undefined)
+          .then(() => runUpload(id, file));
+      }
       return false; // Upload thủ công -> chặn hành vi mặc định của antd Upload.
     },
     [attachments, messageApi, runUpload],
@@ -169,7 +186,12 @@ export function ChatComposer({
   const handleRemove = useCallback((id: string) => {
     uploadControllersRef.current.get(id)?.abort();
     uploadControllersRef.current.delete(id);
-    setAttachments((current) => current.filter((item) => item.id !== id));
+    setAttachments((current) => {
+      const next = current.filter((item) => item.id !== id);
+      // Xoá hết đính kèm -> reset khách nháp của batch.
+      if (next.length === 0) batchCustomerRef.current = undefined;
+      return next;
+    });
   }, []);
 
   /* ---------------- Lệnh `/` tra cứu khách hàng ---------------- */
@@ -226,6 +248,8 @@ export function ChatComposer({
     setAttachments([]);
     setDetection(null);
     setAlertDismissed(false);
+    // Batch đã gửi xong -> reset khách nháp để lần đính kèm sau bắt đầu sạch.
+    batchCustomerRef.current = undefined;
   }, [canSend, isStreaming, onSend, readyAttachments, value]);
 
   return (
