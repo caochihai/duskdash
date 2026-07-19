@@ -5,6 +5,7 @@ import re
 import unicodedata
 from collections.abc import Iterable
 
+from app.engine.action_recommendation_engine import build_action_plan
 from app.schemas.common import Decision, Evidence, Issue, IssueCategory, Severity
 from app.schemas.input_ocr_bundle import OCRBundle
 from app.schemas.output_report import (
@@ -17,7 +18,10 @@ from app.schemas.output_report import (
 )
 
 
-SOURCE_PATTERN = re.compile(r"(?P<document>[^#\s]+)#page=(?P<page>\d+)", re.IGNORECASE)
+SOURCE_PATTERN = re.compile(
+    r"(?P<document>[^#:\s]+)(?:#page=|:)(?P<page>\d+)",
+    re.IGNORECASE,
+)
 TITLE_MARKERS = (
     "BÁO CÁO",
     "GIẤY CHỨNG NHẬN",
@@ -76,6 +80,17 @@ def build_banker_view(
 ) -> BankerView:
     enriched = enrich_issues_with_source_metadata(bundle, issues)
     findings = build_actionable_findings(bundle, enriched)
+    action_plan = build_action_plan(bundle=bundle, findings=findings)
+    action_ids_by_finding: dict[str, list[str]] = {}
+    for action in action_plan.next_actions:
+        for finding_id in action.finding_ids:
+            action_ids_by_finding.setdefault(finding_id, []).append(action.action_id)
+    findings = [
+        item.model_copy(
+            update={"recommended_action_ids": action_ids_by_finding.get(item.finding_id, [])}
+        )
+        for item in findings
+    ]
     verified = sum(item.grounding_status == GroundingStatus.VERIFIED for item in findings)
     needing_review = sum(
         item.grounding_status
@@ -94,23 +109,27 @@ def build_banker_view(
     can_submit = (
         decision in {Decision.APPROVE, Decision.APPROVE_WITH_CONDITIONS}
         and not blocking_unverified
+        and not action_plan.manual_policy_review_required
     )
-    request_list = list(dict.fromkeys(item.request for item in customer_requests))
+    finding_map = {item.finding_id: item for item in findings}
+    trusted_customer_requests = []
+    for action in action_plan.customer_actions:
+        for finding_id in action.finding_ids:
+            finding = finding_map.get(finding_id)
+            if finding is not None and finding.customer_action:
+                trusted_customer_requests.append(finding.customer_action)
+    request_list = list(dict.fromkeys(trusted_customer_requests))
     internal_steps = [
-        "Mở từng nguồn theo tên file và trang, xác nhận trích đoạn trước khi liên hệ khách hàng.",
-        "Chỉ chuyển finding sang VERIFIED khi số liệu, kỳ báo cáo và chủ thể đều khớp tài liệu gốc.",
+        (
+            f"{action.owner_role.value}: {action.action_type.value} — "
+            f"{action.why_required} [rule {action.source_rule_id}@{action.source_rule_version}]"
+        )
+        for action in action_plan.internal_actions
     ]
-    if needing_review:
-        internal_steps.append(
-            f"Xác minh thủ công {needing_review} finding chưa được grounding đầy đủ; không dùng chúng để ra quyết định tự động."
-        )
-    if request_list:
-        internal_steps.append(
-            "Gửi danh sách yêu cầu khách hàng một lần, nhận bổ sung, cập nhật OCR Bundle và chạy lại assessment."
-        )
-    internal_steps.append(
-        "Sau khi mọi finding trọng yếu được RESOLVED hoặc VERIFIED, trình chuyên viên phê duyệt theo policy hiện hành."
-    )
+    if not internal_steps:
+        internal_steps = [
+            "Không có hành động nội bộ phát sinh từ finding đã được grounding và rule còn hiệu lực."
+        ]
     if bundle.policy_context is not None:
         checklist_status = "BANK_POLICY_CHECKLIST_PROVIDED"
     elif all(item.document_type.value == "KHAC" for item in bundle.document_manifest.documents):
@@ -130,6 +149,7 @@ def build_banker_view(
         one_time_customer_request_list=request_list,
         internal_next_steps=internal_steps,
         required_document_checklist_status=checklist_status,
+        action_plan=action_plan,
     )
 
 
@@ -177,7 +197,7 @@ def _to_actionable_finding(bundle: OCRBundle, issue: Issue) -> ActionableFinding
                 page_number=key[1],
                 field_name=issue.location.field_name,
                 source_excerpt=excerpt,
-                ocr_confidence=page.ocr_confidence,
+                extraction_confidence=page.ocr_confidence,
             )
         )
     if not sources:
@@ -194,11 +214,18 @@ def _to_actionable_finding(bundle: OCRBundle, issue: Issue) -> ActionableFinding
                     page_number=key[1],
                     field_name=issue.location.field_name,
                     source_excerpt=excerpt,
-                    ocr_confidence=page.ocr_confidence,
+                    extraction_confidence=page.ocr_confidence,
                 )
             )
             statuses.append(GroundingStatus.NEEDS_HUMAN_VERIFICATION)
 
+    grounding_status = _combine_statuses(statuses)
+    bank_policy_can_authorize_customer_request = bool(
+        bundle.policy_context is not None
+        and bundle.policy_context.policy_id
+        and bundle.policy_context.effective_from
+        and issue.category.value in bundle.policy_context.action_rule_sections
+    )
     return ActionableFinding(
         finding_id=issue.issue_id,
         category=issue.category,
@@ -208,9 +235,14 @@ def _to_actionable_finding(bundle: OCRBundle, issue: Issue) -> ActionableFinding
         why_it_is_an_issue=issue.why_it_is_an_issue or _default_why(issue),
         business_impact=issue.business_impact or _default_impact(issue),
         sources=sources,
-        grounding_status=_combine_statuses(statuses),
-        decision_effect=_decision_effect(issue, _combine_statuses(statuses)),
-        customer_action=issue.suggested_customer_action,
+        grounding_status=grounding_status,
+        decision_effect=_decision_effect(issue, grounding_status),
+        customer_action=(
+            issue.suggested_customer_action
+            if grounding_status == GroundingStatus.VERIFIED
+            and bank_policy_can_authorize_customer_request
+            else None
+        ),
         internal_action=(
             "Đối chiếu trực tiếp tài liệu gốc và xác nhận lại finding."
             if _combine_statuses(statuses) != GroundingStatus.VERIFIED
@@ -281,10 +313,14 @@ def _grounding_status(text: str, excerpt: str, evidence: Evidence) -> GroundingS
     normalized_excerpt = _normalize(excerpt)
     excerpt_is_from_source = bool(normalized_excerpt and normalized_excerpt in normalized_text)
     values = [value for value in _flatten_values(evidence.value) if len(_normalize(value)) >= 2]
-    if values and any(_normalize(value) in normalized_text for value in values):
-        return GroundingStatus.VERIFIED
+    matched_values = [value for value in values if _normalize(value) in normalized_text]
     evidence_tokens = _tokens(json.dumps(evidence.value, ensure_ascii=False))
     excerpt_tokens = _tokens(excerpt)
+    contextual_tokens = excerpt_tokens - evidence_tokens
+    if matched_values and excerpt_is_from_source and contextual_tokens:
+        return GroundingStatus.VERIFIED
+    if matched_values and excerpt_is_from_source:
+        return GroundingStatus.PARTIALLY_VERIFIED
     if excerpt_is_from_source and _overlap_score(evidence_tokens, excerpt_tokens) >= 0.25:
         return GroundingStatus.PARTIALLY_VERIFIED
     return GroundingStatus.NEEDS_HUMAN_VERIFICATION
@@ -369,7 +405,8 @@ def _resolution_steps(issue: Issue) -> list[str]:
 
 def _next_step_after_fix(issue: Issue) -> str:
     return (
-        "Cập nhật tài liệu mới vào OCR Bundle, chạy lại assessment, xác nhận finding đã RESOLVED rồi mới trình phê duyệt."
+        "Cập nhật text/dữ liệu đã trích xuất kèm nguồn và trang, chạy lại assessment, "
+        "xác nhận finding đã RESOLVED rồi mới trình phê duyệt."
     )
 
 

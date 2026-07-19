@@ -1,0 +1,240 @@
+{
+  "registry_id": "VN-CREDIT-LEGAL-BASELINE",
+  "version": "1.0.0-2026-07-19",
+  "jurisdiction": "VN",
+  "reviewed_at": "2026-07-19",
+  "rules": [
+    {
+      "rule_id": "VN-HARD-STOP-LEGAL-REVIEW",
+      "version": "1.0.0",
+      "effective_from": "2024-07-01",
+      "issue_category": "HARD_STOP",
+      "action_type": "LEGAL_REVIEW",
+      "owner_role": "LEGAL",
+      "requirement_level": "MANUAL_REVIEW",
+      "audience": "INTERNAL",
+      "why_required": "Phải xác định finding có thực sự thuộc trường hợp pháp luật cấm/hạn chế hoặc vi phạm điều kiện cấp tín dụng trước khi dừng hay từ chối hồ sơ.",
+      "legal_basis": [
+        {
+          "document": "Luật Các tổ chức tín dụng số 32/2024/QH15 và các sửa đổi hiện hành",
+          "article": "Điều 102, Điều 103 và các điều về hạn chế cấp tín dụng",
+          "official_url": "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=166170",
+          "effective_from": "2024-07-01",
+          "source_version": "32/2024/QH15-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Tài liệu gốc hoặc bản trích xuất đã đối chiếu", "Kết luận phân loại của Pháp chế/Tuân thủ", "Quy tắc nội bộ áp dụng cho sản phẩm"],
+      "completion_criteria": ["Xác định đúng điều khoản áp dụng", "Xác định finding là hard stop hay trường hợp có thể khắc phục", "Lưu ý kiến người có thẩm quyền"],
+      "blocking_stage": "APPROVAL",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": true,
+      "priority": 100
+    },
+    {
+      "rule_id": "VN-CIC-RECHECK",
+      "version": "1.0.0",
+      "effective_from": "2025-01-01",
+      "issue_category": "CIC_RED_FLAG",
+      "action_type": "CIC_RECHECK",
+      "owner_role": "CREDIT_APPRAISER",
+      "requirement_level": "MANUAL_REVIEW",
+      "audience": "INTERNAL",
+      "why_required": "Nhóm nợ là dữ liệu đầu vào thẩm định; việc chấp nhận, từ chối hoặc ngoại lệ phải theo chính sách tín dụng nội bộ, không được suy ra tự động chỉ từ tên nhóm nợ.",
+      "legal_basis": [
+        {
+          "document": "Thông tư 39/2016/TT-NHNN và các sửa đổi hiện hành",
+          "article": "Điều 17 và Điều 22",
+          "official_url": "https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-print.aspx?ItemID=118230&dvid=326",
+          "effective_from": "2017-03-15",
+          "source_version": "39/2016/TT-NHNN-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        },
+        {
+          "document": "Thông tư 15/2023/TT-NHNN",
+          "article": "Quy định về hoạt động thông tin tín dụng của Ngân hàng Nhà nước",
+          "official_url": "https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-thuoctinh.aspx?ItemID=163727",
+          "effective_from": "2025-01-01",
+          "source_version": "15/2023/TT-NHNN",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Báo cáo CIC còn hiệu lực", "Định danh đúng khách hàng và bên liên quan", "Quy định CIC nội bộ theo sản phẩm"],
+      "completion_criteria": ["Đối chiếu đúng chủ thể", "Xác nhận nhóm nợ và ngày cập nhật", "Áp dụng đúng ngưỡng/ngoại lệ nội bộ"],
+      "blocking_stage": "APPROVAL",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": true,
+      "priority": 95
+    },
+    {
+      "rule_id": "VN-FINANCIAL-CAPACITY-RECALCULATE",
+      "version": "1.0.0",
+      "effective_from": "2024-07-01",
+      "issue_category": "FINANCIAL_LOGIC_FAIL",
+      "action_type": "RECALCULATE",
+      "owner_role": "CREDIT_APPRAISER",
+      "requirement_level": "REQUIRED_BY_LAW",
+      "audience": "INTERNAL",
+      "why_required": "Khả năng tài chính và khả năng trả nợ phải được chứng minh, thẩm định từ dữ liệu có nguồn trước khi quyết định cấp tín dụng.",
+      "legal_basis": [
+        {
+          "document": "Luật Các tổ chức tín dụng số 32/2024/QH15 và các sửa đổi hiện hành",
+          "article": "Điều 102",
+          "official_url": "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=166170",
+          "effective_from": "2024-07-01",
+          "source_version": "32/2024/QH15-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        },
+        {
+          "document": "Thông tư 39/2016/TT-NHNN và các sửa đổi hiện hành",
+          "article": "Điều 7, Điều 9, Điều 17 và Điều 22",
+          "official_url": "https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-print.aspx?ItemID=118230&dvid=326",
+          "effective_from": "2017-03-15",
+          "source_version": "39/2016/TT-NHNN-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Số liệu tài chính đã đối chiếu nguồn", "Các toán hạng của chỉ tiêu", "Kỳ báo cáo và đơn vị tiền tệ"],
+      "completion_criteria": ["Tính lại chỉ tiêu từ cùng một kỳ và cùng chủ thể", "Lưu công thức và nguồn từng toán hạng", "Chuyển ngưỡng quyết định cho policy nội bộ"],
+      "blocking_stage": "APPROVAL",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": false,
+      "priority": 90
+    },
+    {
+      "rule_id": "VN-CROSS-CHECK-VERIFY",
+      "version": "1.0.0",
+      "effective_from": "2024-07-01",
+      "issue_category": "CROSS_CHECK_MISMATCH",
+      "action_type": "VERIFY_EXTRACTED_SOURCE",
+      "owner_role": "CREDIT_APPRAISER",
+      "requirement_level": "REQUIRED_BY_LAW",
+      "audience": "INTERNAL",
+      "why_required": "Thông tin dùng để thẩm định phải được xác định đúng chủ thể và có hồ sơ chứng minh trước khi trình quyết định.",
+      "legal_basis": [
+        {
+          "document": "Luật Các tổ chức tín dụng số 32/2024/QH15 và các sửa đổi hiện hành",
+          "article": "Điều 102 và Điều 104",
+          "official_url": "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=166170",
+          "effective_from": "2024-07-01",
+          "source_version": "32/2024/QH15-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Hai hoặc nhiều nguồn đang mâu thuẫn", "Bản gốc/bản xác thực của trường dữ liệu"],
+      "completion_criteria": ["Xác định giá trị chính thức", "Ghi nhận nguồn thắng và lý do", "Cập nhật dữ liệu trích xuất rồi chạy lại"],
+      "blocking_stage": "APPROVAL",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": false,
+      "priority": 85
+    },
+    {
+      "rule_id": "VN-MINOR-DATA-VERIFY",
+      "version": "1.0.0",
+      "effective_from": "2024-07-01",
+      "issue_category": "MINOR_DISCREPANCY",
+      "action_type": "VERIFY_EXTRACTED_SOURCE",
+      "owner_role": "CREDIT_APPRAISER",
+      "requirement_level": "RISK_CONTROL_RECOMMENDED",
+      "audience": "INTERNAL",
+      "why_required": "Sai lệch nhỏ phải được xác định là lỗi trích xuất hay lỗi hồ sơ trước khi dùng dữ liệu cho thẩm định.",
+      "legal_basis": [
+        {
+          "document": "Luật Các tổ chức tín dụng số 32/2024/QH15 và các sửa đổi hiện hành",
+          "article": "Điều 102 và Điều 104",
+          "official_url": "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=166170",
+          "effective_from": "2024-07-01",
+          "source_version": "32/2024/QH15-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Trường dữ liệu sai lệch", "Trang nguồn tương ứng"],
+      "completion_criteria": ["Phân loại lỗi trích xuất hoặc lỗi chứng từ", "Sửa dữ liệu có audit trail"],
+      "blocking_stage": "ASSESSMENT",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": false,
+      "priority": 55
+    },
+    {
+      "rule_id": "VN-MISSING-DOCUMENT-POLICY-CHECK",
+      "version": "1.0.0",
+      "effective_from": "2017-03-15",
+      "issue_category": "MISSING_DOCUMENT",
+      "action_type": "REQUEST_DOCUMENT",
+      "owner_role": "RELATIONSHIP_MANAGER",
+      "requirement_level": "REQUIRED_BY_BANK_POLICY",
+      "audience": "CUSTOMER",
+      "why_required": "Chỉ được yêu cầu khách hàng bổ sung loại tài liệu đã được checklist sản phẩm hoặc quy định nội bộ hiện hành xác định là bắt buộc.",
+      "legal_basis": [
+        {
+          "document": "Thông tư 39/2016/TT-NHNN và các sửa đổi hiện hành",
+          "article": "Điều 9 và Điều 22",
+          "official_url": "https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-print.aspx?ItemID=118230&dvid=326",
+          "effective_from": "2017-03-15",
+          "source_version": "39/2016/TT-NHNN-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Checklist hồ sơ bắt buộc theo sản phẩm", "Tài liệu/field còn thiếu"],
+      "completion_criteria": ["Tài liệu nhận đủ trang", "Đúng chủ thể và kỳ báo cáo", "Được trích xuất lại với nguồn/trang"],
+      "blocking_stage": "ASSESSMENT",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": true,
+      "priority": 80
+    },
+    {
+      "rule_id": "VN-COLLATERAL-PRE-DISBURSEMENT",
+      "version": "1.0.0",
+      "effective_from": "2021-05-15",
+      "issue_category": "PRE_DISBURSEMENT_CONDITION",
+      "action_type": "COLLATERAL_REVIEW",
+      "owner_role": "COLLATERAL_VALUATION",
+      "requirement_level": "REQUIRED_BY_BANK_POLICY",
+      "audience": "INTERNAL",
+      "why_required": "Điều kiện pháp lý/tài sản bảo đảm phải được hoàn thành và kiểm soát theo quy trình nội bộ trước giải ngân; không tự động đồng nghĩa với từ chối khoản vay.",
+      "legal_basis": [
+        {
+          "document": "Nghị định 21/2021/NĐ-CP",
+          "article": "Quy định thi hành Bộ luật Dân sự về bảo đảm thực hiện nghĩa vụ",
+          "official_url": "https://vbpl.vn/TW/Pages/vbpq-toanvan.aspx?ItemID=147004",
+          "effective_from": "2021-05-15",
+          "source_version": "21/2021/ND-CP",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Hồ sơ sở hữu và tình trạng pháp lý tài sản", "Kết quả định giá", "Điều kiện giải ngân nội bộ"],
+      "completion_criteria": ["Hoàn tất kiểm tra quyền sở hữu/hạn chế", "Hoàn tất định giá và biện pháp bảo đảm", "Được người có thẩm quyền xác nhận"],
+      "blocking_stage": "DISBURSEMENT",
+      "next_state_after_completion": "READY_FOR_DISBURSEMENT_REVIEW",
+      "requires_bank_policy": true,
+      "priority": 85
+    },
+    {
+      "rule_id": "VN-UNCLASSIFIED-POLICY-REVIEW",
+      "version": "1.0.0",
+      "effective_from": "2017-03-15",
+      "issue_category": "POLICY_REVIEW_REQUIRED",
+      "action_type": "POLICY_REVIEW",
+      "owner_role": "CREDIT_APPRAISER",
+      "requirement_level": "MANUAL_REVIEW",
+      "audience": "INTERNAL",
+      "why_required": "Finding chưa khớp quy tắc đã được phê duyệt nên phải được phân loại theo quy định nội bộ trước khi tạo yêu cầu khách hàng hoặc ảnh hưởng quyết định.",
+      "legal_basis": [
+        {
+          "document": "Thông tư 39/2016/TT-NHNN và các sửa đổi hiện hành",
+          "article": "Điều 22",
+          "official_url": "https://vbpl.vn/nganhangnhanuoc/Pages/vbpq-print.aspx?ItemID=118230&dvid=326",
+          "effective_from": "2017-03-15",
+          "source_version": "39/2016/TT-NHNN-current-amendments",
+          "last_reviewed_at": "2026-07-19"
+        }
+      ],
+      "required_evidence": ["Finding đã grounding", "Quy định nội bộ và quy trình sản phẩm"],
+      "completion_criteria": ["Gắn finding vào rule nội bộ có phiên bản", "Xác định người xử lý và điều kiện hoàn thành"],
+      "blocking_stage": "APPROVAL",
+      "next_state_after_completion": "REASSESS",
+      "requires_bank_policy": true,
+      "priority": 75
+    }
+  ]
+}

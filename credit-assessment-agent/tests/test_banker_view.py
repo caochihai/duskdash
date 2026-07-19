@@ -16,7 +16,9 @@ def test_banker_view_exposes_exact_source_and_next_step(multi_issue_bundle):
     assert first.why_it_is_an_issue
     assert first.business_impact
     assert "chạy lại assessment" in first.next_step_after_fix.lower()
-    assert view.one_time_customer_request_list
+    assert view.one_time_customer_request_list == []
+    assert view.action_plan.manual_policy_review_required is True
+    assert first.recommended_action_ids
 
 
 def test_dataset_marker_repeated_across_bundle_is_not_customer_fraud(clean_bundle):

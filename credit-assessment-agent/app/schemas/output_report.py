@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import StrEnum
 
-from pydantic import Field, model_validator
+from pydantic import AliasChoices, Field, model_validator
 
 from app.schemas.common import (
     Decision,
@@ -13,6 +13,7 @@ from app.schemas.common import (
     Severity,
     StrictModel,
 )
+from app.schemas.policy_action import ActionPlan
 
 
 class MissingReason(StrEnum):
@@ -102,7 +103,15 @@ class FindingSource(StrictModel):
     page_number: int = Field(ge=1)
     field_name: str | None = None
     source_excerpt: str
-    ocr_confidence: float = Field(ge=0, le=1)
+    extraction_confidence: float = Field(
+        ge=0,
+        le=1,
+        validation_alias=AliasChoices("extraction_confidence", "ocr_confidence"),
+    )
+
+    @property
+    def ocr_confidence(self) -> float:
+        return self.extraction_confidence
 
 
 class ActionableFinding(StrictModel):
@@ -119,6 +128,7 @@ class ActionableFinding(StrictModel):
     customer_action: str | None = None
     internal_action: str
     next_step_after_fix: str
+    recommended_action_ids: list[str] = Field(default_factory=list)
 
 
 class BankerView(StrictModel):
@@ -134,10 +144,11 @@ class BankerView(StrictModel):
     one_time_customer_request_list: list[str]
     internal_next_steps: list[str]
     required_document_checklist_status: str
+    action_plan: ActionPlan
 
 
 class AssessmentReport(StrictModel):
-    schema_version: str = "1.0"
+    schema_version: str = "2.0"
     case_id: str
     customer_id: str
     processing_status: ProcessingStatus

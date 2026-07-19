@@ -84,7 +84,7 @@ class DocumentAuditorAgent:
         errors: list[str] = []
         for attempt in range(1, self._max_attempts + 1):
             payload = {
-                "ocr_bundle": bundle.model_dump(mode="json"),
+                "extracted_case_bundle": bundle.model_dump(mode="json"),
                 "agent_id": AGENT_ID,
                 "run_id": resolved_run_id,
                 "validation_feedback": errors[-1] if errors else None,

@@ -7,7 +7,7 @@ from app.schemas.common import CriterionStatus, Decision, IssueCategory, Severit
 from app.engine.issue_taxonomy_guard import is_decision_eligible_hard_stop
 
 
-POLICY_VERSION = "credit-policy-1.1-grounded"
+POLICY_VERSION = "credit-policy-2.0-legal-action-grounded"
 DTI_SAFE_MAX = 40.0
 DTI_BORDERLINE_MAX = 50.0
 DSCR_SAFE_MIN = 1.25
@@ -82,7 +82,26 @@ def evaluate_policy(
     if dscr is not None and not dscr_eligible:
         warnings.append("DSCR_OPERANDS_NOT_VERIFIED")
     if not required_checklist_verified:
-        warnings.append("REQUIRED_DOCUMENT_CHECKLIST_NOT_PROVIDED")
+        warnings.extend(
+            [
+                "REQUIRED_DOCUMENT_CHECKLIST_NOT_PROVIDED",
+                "BANK_DECISION_POLICY_NOT_CONFIGURED",
+            ]
+        )
+
+    # Public law defines mandatory conditions and governance duties, but bank-specific
+    # thresholds/exception paths must come from an approved internal policy. Without
+    # that input, no hard-coded DTI/DSCR/CIC value may automatically approve or reject.
+    if not required_checklist_verified:
+        return PolicyResult(
+            decision_candidate=Decision.PENDING,
+            reasons=["MANUAL_POLICY_REVIEW_REQUIRED"],
+            recalculated_dti_percent=dti,
+            recalculated_dscr=dscr,
+            dti_decision_eligible=False,
+            dscr_decision_eligible=False,
+            decision_input_warnings=warnings,
+        )
 
     critical_hard_stop = any(
         is_decision_eligible_hard_stop(issue) and issue_is_verified(issue.issue_id)

@@ -333,7 +333,14 @@ def _verified_metric_names(bundle: OCRBundle, grounded_dti: GroundedDTI | None =
 
 
 def _required_checklist_verified(bundle: OCRBundle) -> bool:
-    return bundle.policy_context is not None or _is_verified_fixture(bundle)
+    context = bundle.policy_context
+    configured_bank_policy = bool(
+        context is not None
+        and context.policy_id
+        and context.effective_from
+        and context.action_rule_sections
+    )
+    return configured_bank_policy or _is_verified_fixture(bundle)
 
 
 def _is_verified_fixture(bundle: OCRBundle) -> bool:

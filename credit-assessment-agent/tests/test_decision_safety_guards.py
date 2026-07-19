@@ -55,12 +55,12 @@ def test_unverified_decision_inputs_force_pending(multi_issue_bundle):
     )
     assert result.decision_candidate == Decision.PENDING
     assert result.protected_reject is False
-    assert "UNVERIFIED_DECISION_INPUT" in result.reasons
+    assert "MANUAL_POLICY_REVIEW_REQUIRED" in result.reasons
     assert "DTI_OPERANDS_NOT_VERIFIED" in result.decision_input_warnings
     assert "REQUIRED_DOCUMENT_CHECKLIST_NOT_PROVIDED" in result.decision_input_warnings
 
 
-def test_verified_real_hard_stop_can_still_reject(multi_issue_bundle):
+def test_verified_real_hard_stop_waits_for_bank_policy(multi_issue_bundle):
     audit = DocumentAuditorAgent().audit(multi_issue_bundle, run_id="run-safe")
     result = evaluate_policy(
         audit,
@@ -68,8 +68,9 @@ def test_verified_real_hard_stop_can_still_reject(multi_issue_bundle):
         verified_metric_names=set(),
         required_checklist_verified=False,
     )
-    assert result.decision_candidate == Decision.REJECT
-    assert result.protected_reject is True
+    assert result.decision_candidate == Decision.PENDING
+    assert result.protected_reject is False
+    assert "MANUAL_POLICY_REVIEW_REQUIRED" in result.reasons
 
 
 def test_dti_operands_are_reconciled_from_one_exact_page(clean_bundle):

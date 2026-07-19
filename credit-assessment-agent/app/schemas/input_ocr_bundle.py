@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from datetime import date
 from enum import StrEnum
 
 from pydantic import Field, model_validator
@@ -86,8 +87,11 @@ class PolicyContext(StrictModel):
     """Bank-approved inputs that the document agent is not allowed to invent."""
 
     policy_version: str = Field(min_length=1)
+    policy_id: str | None = None
+    effective_from: date | None = None
     required_document_types: list[DocumentType] = Field(min_length=1)
     verified_metric_names: list[str] = Field(default_factory=list)
+    action_rule_sections: dict[str, str] = Field(default_factory=dict)
 
 
 class OCRBundle(StrictModel):

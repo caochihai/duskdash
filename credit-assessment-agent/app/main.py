@@ -19,8 +19,11 @@ def create_app(*, pipeline: AssessmentPipeline | None = None) -> FastAPI:
     configure_logging()
     app = FastAPI(
         title="Credit Document Assessment Agent",
-        version="0.1.0",
-        description="Human-in-the-loop credit document assessment microservice",
+        version="0.2.0",
+        description=(
+            "Human-in-the-loop assessment microservice for upstream-extracted text/data; "
+            "does not accept or process PDF/image bytes"
+        ),
     )
     app.state.pipeline = pipeline or _build_pipeline_from_environment()
     app.include_router(health.router)

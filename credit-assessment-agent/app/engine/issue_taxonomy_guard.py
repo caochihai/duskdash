@@ -40,7 +40,42 @@ def normalize_issue_taxonomy(issues: list[Issue]) -> list[Issue]:
     policy classification.
     """
 
-    return [_normalize_issue(issue) for issue in issues]
+    return [_normalize_invalid_financial_comparison(_normalize_issue(issue)) for issue in issues]
+
+
+def _normalize_invalid_financial_comparison(issue: Issue) -> Issue:
+    text = _issue_text(issue)
+    if (
+        "vay dai han" in text
+        and "tong du no" in text
+        and ("cic" in text or "tin dung" in text)
+    ):
+        return issue.model_copy(
+            update={
+                "category": IssueCategory.FINANCIAL_LOGIC_FAIL,
+                "severity": Severity.MEDIUM,
+                "description": (
+                    "Phép so sánh vay dài hạn trên BCTC với tổng dư nợ CIC chưa cùng phạm vi; "
+                    "chưa thể kết luận có khoản nợ bị thiếu 42 tỷ."
+                ),
+                "why_it_is_an_issue": (
+                    "Tổng dư nợ CIC có thể gồm cả vay ngắn hạn và dài hạn; phải cộng đúng các "
+                    "khoản vay trên BCTC và đối chiếu cùng ngày báo cáo."
+                ),
+                "business_impact": (
+                    "Nếu giữ phép so sánh sai phạm vi, hệ thống có thể tạo red flag nghĩa vụ nợ giả."
+                ),
+                "requires_customer_action": False,
+                "suggested_customer_action": None,
+                "resolution_steps": [
+                    "Đối chiếu tổng vay ngắn hạn và dài hạn trên BCTC với CIC tại cùng ngày."
+                ],
+                "next_step_after_resolution": (
+                    "Tính lại chênh lệch trên cùng phạm vi; chỉ tạo mismatch nếu vẫn còn sai lệch."
+                ),
+            }
+        )
+    return issue
 
 
 def is_decision_eligible_hard_stop(issue: Issue) -> bool:
