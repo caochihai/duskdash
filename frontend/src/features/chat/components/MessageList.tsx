@@ -3,6 +3,7 @@ import { Avatar, Skeleton } from 'antd';
 import { MessageOutlined } from '@ant-design/icons';
 import { UserMessage } from './UserMessage';
 import { AssistantMessage } from './AssistantMessage';
+import type { HighlightDocument } from './HighlightDocumentViewer';
 import { EmptyState } from '@/components/common/EmptyState';
 import { PageError } from '@/components/common/PageError';
 import { shbColors } from '@/theme/tokens';
@@ -22,7 +23,7 @@ export interface MessageListProps {
   onViewSources?: (message: ChatMessage) => void;
   busy?: boolean;
   onViewCustomer?: (customerId: string) => void;
-  onOpenHighlightDocument?: (doc: { name: string; url: string }) => void;
+  onOpenHighlightDocument?: (doc: HighlightDocument) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,

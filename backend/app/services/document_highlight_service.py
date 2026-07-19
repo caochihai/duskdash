@@ -131,17 +131,9 @@ class AnnotatedImage:
 
 def render_highlight_markdown(result: HighlightResult, links: list[AnnotatedImage]) -> str:
     """Dựng nội dung trả lời: câu trả lời + bản trích xuất highlight + link ảnh."""
-    lines = [result.answer, "", "**📄 Bản hồ sơ đã highlight:**", "", result.document_summary]
-    if result.segments:
-        lines.append("")
-        for segment in result.segments:
-            icon = _LEVEL_ICON.get(segment.level, "•")
-            label = _LEVEL_LABEL.get(segment.level, segment.level)
-            lines.append(f"> {icon} **[{label}]** “{segment.text}”")
-            lines.append(f"> ↳ _{segment.reason}_")
-            if segment.legal_basis:
-                lines.append(f"> ⚖️ Căn cứ: {segment.legal_basis}")
-            lines.append(">")
+    # Các segment KHÔNG chèn vào text: client render danh sách dẫn chứng
+    # tương tác từ metadata.highlight_segments (bấm mở đúng vùng trên ảnh).
+    lines = [result.answer, "", "**📄 Tóm tắt hồ sơ:**", "", result.document_summary]
     # Ảnh đã highlight không chèn link vào text — client render gallery riêng
     # từ metadata.highlight_documents (chat giữ vai trò tương tác thuần).
     del links

@@ -13,6 +13,7 @@ import {
 } from '@ant-design/icons';
 import { motion, useReducedMotion } from 'motion/react';
 import { MarkdownContent } from './MarkdownContent';
+import type { HighlightDocument } from './HighlightDocumentViewer';
 import { MessageBlocks } from './MessageBlocks';
 import { SuggestedQuestions } from './SuggestedQuestions';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -29,8 +30,8 @@ export interface AssistantMessageProps {
   /** Có tin nhắn khác đang được tạo -> khoá các action gửi. */
   busy?: boolean;
   onViewCustomer?: (customerId: string) => void;
-  /** Bấm thumbnail hồ sơ highlight -> mở ở panel bên phải. */
-  onOpenHighlightDocument?: (doc: { name: string; url: string }) => void;
+  /** Bấm thumbnail/dẫn chứng -> mở viewer ở panel phải, khoanh đúng vùng. */
+  onOpenHighlightDocument?: (doc: HighlightDocument) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,
@@ -221,51 +222,121 @@ export function AssistantMessage({
         )}
 
         {isComplete && message.highlightDocuments && message.highlightDocuments.length > 0 && (
-          <div
-            role="group"
-            aria-label="Hồ sơ đã highlight"
-            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
-          >
-            {message.highlightDocuments.map((doc) => (
-              <button
-                key={doc.url}
-                type="button"
-                onClick={() => onOpenHighlightDocument?.(doc)}
-                style={{
-                  border: 'none',
-                  background: 'transparent',
-                  padding: 0,
-                  cursor: 'pointer',
-                  width: 148,
-                }}
-                aria-label={`Mở ${doc.name} ở panel hồ sơ`}
-              >
-                <Image
-                  src={doc.url}
-                  alt={doc.name}
-                  width={148}
-                  height={104}
-                  preview={false}
+          <>
+            <div
+              role="group"
+              aria-label="Hồ sơ đã highlight"
+              style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
+            >
+              {message.highlightDocuments.map((doc) => (
+                <button
+                  key={doc.url}
+                  type="button"
+                  onClick={() => onOpenHighlightDocument?.(doc)}
                   style={{
-                    objectFit: 'cover',
-                    borderRadius: 10,
-                    border: '1px solid #EAE3DA',
+                    border: 'none',
+                    background: 'transparent',
+                    padding: 0,
+                    cursor: 'pointer',
+                    width: 148,
                   }}
-                />
-                <span
-                  style={{
-                    display: 'block',
-                    fontSize: 12,
-                    color: '#667085',
-                    marginTop: 4,
-                    textAlign: 'center',
-                  }}
+                  aria-label={`Mở ${doc.name} ở panel hồ sơ`}
                 >
-                  {doc.name}
-                </span>
-              </button>
-            ))}
-          </div>
+                  <Image
+                    src={doc.url}
+                    alt={doc.name}
+                    width={148}
+                    height={104}
+                    preview={false}
+                    style={{
+                      objectFit: 'cover',
+                      borderRadius: 10,
+                      border: '1px solid #EAE3DA',
+                    }}
+                  />
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: 12,
+                      color: '#667085',
+                      marginTop: 4,
+                      textAlign: 'center',
+                    }}
+                  >
+                    {doc.name}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Dẫn chứng kiểu NotebookLM: mỗi vùng trích một chip đánh số,
+                bấm mở viewer panel phải và khoanh đỏ đúng dòng trên hồ sơ gốc. */}
+            {(() => {
+              const citations = (message.highlightDocuments ?? []).flatMap((doc) =>
+                (doc.regions ?? []).map((region) => ({ doc, region })),
+              );
+              if (citations.length === 0) return null;
+              return (
+                <div style={{ marginTop: 10 }} role="list" aria-label="Dẫn chứng trên hồ sơ">
+                  <span style={{ fontSize: 12, fontWeight: 600, color: '#2F2E79' }}>
+                    📎 Dẫn chứng trên hồ sơ gốc:
+                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                    {citations.map(({ doc, region }, index) => (
+                      <button
+                        key={`${doc.url}-${region.id}`}
+                        type="button"
+                        role="listitem"
+                        onClick={() =>
+                          onOpenHighlightDocument?.({ ...doc, activeRegionId: region.id })
+                        }
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          gap: 8,
+                          textAlign: 'left',
+                          border: '1px solid #EAE3DA',
+                          background: '#FFFDF9',
+                          borderRadius: 8,
+                          padding: '6px 10px',
+                          cursor: 'pointer',
+                        }}
+                        title={region.label}
+                        aria-label={`Dẫn chứng ${index + 1}: ${region.quote}`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            flexShrink: 0,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
+                            background: '#F37021',
+                            color: '#fff',
+                            fontSize: 11,
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          {index + 1}
+                        </span>
+                        <span style={{ fontSize: 13, color: '#18212B', minWidth: 0 }}>
+                          <span style={{ fontStyle: 'italic' }}>“{region.quote}”</span>
+                          {region.label && (
+                            <span style={{ display: 'block', fontSize: 12, color: '#667085' }}>
+                              {region.label}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
+          </>
         )}
 
         {isComplete && message.suggestions && message.suggestions.length > 0 && (
