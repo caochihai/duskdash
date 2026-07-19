@@ -427,7 +427,10 @@ export default function ChatPage() {
 
   /* ---------------- Panel resize ---------------- */
 
-  const showPanel = panelOpen && activeCustomer !== null;
+  // Panel mở khi có khách hàng ĐANG xem HOẶC đang xem hồ sơ highlight — không
+  // đòi activeCustomer, vì bấm dẫn chứng ngay sau upload (khách nháp chưa kịp
+  // set) vẫn phải mở được viewer.
+  const showPanel = panelOpen && (activeCustomer !== null || highlightDoc !== null);
   const customerRecords = useMemo(
     () => (activeCustomer && USE_MOCK_API ? findLoansByCustomer(activeCustomer.id) : []),
     [activeCustomer],
@@ -551,7 +554,7 @@ export default function ChatPage() {
           </div>
 
           {/* Panel inline chỉ trên desktop; mobile dùng Drawer bên dưới. */}
-          {showPanel && !isMobile && activeCustomer && (
+          {showPanel && !isMobile && (
             <div className={styles.panelCol} style={{ width: `${panelWidth}%` }}>
               <div
                 className={styles.resizer}
@@ -566,7 +569,7 @@ export default function ChatPage() {
                   onBack={() => setHighlightDoc(null)}
                   onClose={closePanel}
                 />
-              ) : (
+              ) : activeCustomer ? (
                 <CustomerWorkspacePanel
                   customer={activeCustomer}
                   records={customerRecords}
@@ -575,7 +578,7 @@ export default function ChatPage() {
                   onReviewInChat={handleReviewInChat}
                   onLoanDecision={handleLoanDecision}
                 />
-              )}
+              ) : null}
             </div>
           )}
         </div>
@@ -596,7 +599,7 @@ export default function ChatPage() {
       />
 
       {/* Mobile: panel hồ sơ hiển thị dạng Drawer gần full màn hình. */}
-      {isMobile && activeCustomer && (
+      {isMobile && (activeCustomer || highlightDoc) && (
         <Drawer
           open={showPanel}
           onClose={closePanel}
@@ -611,7 +614,7 @@ export default function ChatPage() {
               onBack={() => setHighlightDoc(null)}
               onClose={closePanel}
             />
-          ) : (
+          ) : activeCustomer ? (
             <CustomerWorkspacePanel
               customer={activeCustomer}
               records={customerRecords}
@@ -620,7 +623,7 @@ export default function ChatPage() {
               onReviewInChat={handleReviewInChat}
               onLoanDecision={handleLoanDecision}
             />
-          )}
+          ) : null}
         </Drawer>
       )}
 
