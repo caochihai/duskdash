@@ -1,4 +1,5 @@
 import Keycloak, { type KeycloakTokenParsed } from 'keycloak-js';
+import { hasDemoSession, signOut as signOutDemo } from './demoSession';
 
 const useMockApi = import.meta.env.VITE_USE_MOCK_API !== 'false';
 
@@ -15,18 +16,36 @@ function getKeycloak(): Keycloak {
   return keycloak;
 }
 
-/** Initialize Authorization Code + PKCE before protected API queries run. */
+/**
+ * Khởi tạo Authorization Code + PKCE ở chế độ check-sso: chỉ KIỂM TRA phiên,
+ * không ép chuyển hướng. Người chưa đăng nhập được RequireAuth đưa về /login.
+ */
 export async function initializeAuthentication(): Promise<void> {
   if (useMockApi) return;
 
   const client = getKeycloak();
-  const authenticated = await client.init({
-    onLoad: 'login-required',
+  await client.init({
+    onLoad: 'check-sso',
+    silentCheckSsoRedirectUri: `${window.location.origin}/silent-check-sso.html`,
     pkceMethod: 'S256',
     checkLoginIframe: false,
   });
+}
 
-  if (!authenticated) await client.login();
+/**
+ * Mock mode dùng phiên demo trong `demoSession` (đăng nhập bằng biểu mẫu),
+ * chứ KHÔNG mặc định coi là đã đăng nhập — để bản demo thể hiện đúng luồng
+ * "chưa đăng nhập thì không vào được hệ thống".
+ */
+export function isAuthenticated(): boolean {
+  if (useMockApi) return hasDemoSession();
+  return keycloak?.authenticated === true;
+}
+
+/** Chuyển hướng sang Keycloak; sau khi đăng nhập quay lại đúng trang yêu cầu. */
+export async function login(returnTo = '/'): Promise<void> {
+  const client = getKeycloak();
+  await client.login({ redirectUri: `${window.location.origin}${returnTo}` });
 }
 
 /** Return a short-lived in-memory token; tokens are never written to browser storage. */
@@ -44,6 +63,12 @@ export function getAuthenticatedClaims(): KeycloakTokenParsed | undefined {
 }
 
 export async function logout(): Promise<void> {
+  if (useMockApi) {
+    signOutDemo();
+    window.location.assign('/login');
+    return;
+  }
+
   if (!keycloak) return;
-  await keycloak.logout({ redirectUri: window.location.origin });
+  await keycloak.logout({ redirectUri: `${window.location.origin}/login` });
 }

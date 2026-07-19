@@ -2,6 +2,8 @@ import type { ChatSource } from './source';
 import type { ChatAttachment } from './attachment';
 import type { AgentTrace } from './agent';
 import type { Customer, LoanApplication } from './customer';
+import type { DocumentRegion } from '@/features/chat/constants/demoDocuments';
+import type { ExpertReportBundle } from './report';
 
 export type MessageRole = 'user' | 'assistant' | 'system';
 
@@ -53,6 +55,13 @@ export interface ChatSuggestion {
   id: string;
   label: string;
   prompt: string;
+  /**
+   * Gợi ý này MỞ PHIÊN của một khách hàng thay vì gửi thêm câu hỏi.
+   *
+   * Cần thiết vì ở phiên chung, hệ thống trả lời "hãy mở phiên của X"; nếu gợi ý
+   * kèm theo chỉ gửi lại câu hỏi cũ thì người dùng rơi vào vòng lặp.
+   */
+  opensCustomerId?: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -152,6 +161,12 @@ export interface CustomerSummaryBlock {
   customer: Customer;
 }
 
+/** Báo cáo đầy đủ của 3 chuyên gia số + kết luận tổng hợp. */
+export interface ExpertReportBlock {
+  type: 'expertReport';
+  bundle: ExpertReportBundle;
+}
+
 export type MessageBlock =
   | MarkdownBlock
   | TableBlock
@@ -162,7 +177,8 @@ export type MessageBlock =
   | CtaBlock
   | DisclaimerBlock
   | LoanApprovalBlock
-  | CustomerSummaryBlock;
+  | CustomerSummaryBlock
+  | ExpertReportBlock;
 
 /* ------------------------------------------------------------------ */
 /* Message                                                             */
@@ -182,6 +198,16 @@ export interface ChatMessage {
   sources?: ChatSource[];
   attachments?: ChatAttachment[];
   suggestions?: ChatSuggestion[];
+  /**
+   * Hồ sơ có dẫn chứng cho câu trả lời này — bấm để mở bản to kèm khung đánh dấu.
+   * `regions` là toạ độ OCR (0..1) của các vị trí được trích; rỗng thì chỉ xem ảnh gốc.
+   */
+  highlightDocuments?: {
+    name: string;
+    url: string;
+    regions?: DocumentRegion[];
+    activeRegionId?: string;
+  }[];
   /** Phase hiện tại khi status = 'thinking'. */
   phase?: AIProcessingPhase;
   /**

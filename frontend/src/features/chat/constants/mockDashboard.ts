@@ -53,7 +53,7 @@ export const MOCK_AGENT_RUNS: AgentRun[] = [
   },
   {
     id: 'run-004',
-    request: 'Sàng lọc AML/KYC — Công ty Minh Phát',
+    request: 'Sàng lọc AML/KYC — Công ty CP Bao bì VinaNova',
     reference: 'CIF-9920477',
     status: 'completed',
     decision: 'approved',

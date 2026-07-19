@@ -25,6 +25,19 @@ import {
   MOCK_LOAN_APPLICATIONS,
   findLoanByCustomer,
 } from '@/features/chat/constants/mockCustomers';
+import { getDemoSession } from '@/auth/demoSession';
+import { applyApprovalLimit } from './approvalScope';
+import { buildExpertReports } from '@/features/chat/constants/mockExpertReports';
+import type { LoanApplication } from '@/types/customer';
+import type { ChatSource } from '@/types/source';
+import {
+  DEMO_DOCUMENTS,
+  DOCUMENT_CUSTOMER_ID,
+  findDocumentByKind,
+  locateInDocument,
+  type DemoDocument,
+  type DocumentRegion,
+} from '@/features/chat/constants/demoDocuments';
 
 /**
  * Mock API — cho phép toàn bộ frontend demo chạy khi chưa có backend.
@@ -307,6 +320,8 @@ interface GeneratedResponse {
   phases: AIProcessingPhase[];
   /** Dấu vết phối hợp của hệ multi-agent. */
   trace?: AgentTrace;
+  /** Hồ sơ kèm vùng được trích dẫn — bấm để mở và khoanh đỏ đúng chỗ. */
+  highlightDocuments?: ChatMessage['highlightDocuments'];
 }
 
 /** Đọc số tiền từ câu hỏi: "2 tỷ", "1,5 tỷ", "800 triệu". */
@@ -869,9 +884,33 @@ function buildDocumentResponse(): GeneratedResponse {
 /* Multi-agent: thẩm định hồ sơ vay                                    */
 /* ------------------------------------------------------------------ */
 
-/** Tìm khách hàng được nhắc tới trong câu hỏi. */
+/* ---------------- Phạm vi dữ liệu theo quyền chuyên viên ---------------- */
+
+/** Khách hàng thuộc danh mục được phân công cho chuyên viên đang đăng nhập. */
+function authorizedCustomers() {
+  const session = getDemoSession();
+  if (!session) return [];
+  return MOCK_CUSTOMERS.filter((customer) =>
+    session.authorizedCustomerIds.includes(customer.id),
+  );
+}
+
+function isInScope(customerId: string): boolean {
+  return getDemoSession()?.authorizedCustomerIds.includes(customerId) ?? false;
+}
+
+/** Tìm khách hàng được nhắc tới trong câu hỏi — CHỈ trong phạm vi được phép. */
 function findCustomerInText(normalized: string) {
-  return MOCK_CUSTOMERS.find((customer) => {
+  return matchCustomer(authorizedCustomers(), normalized);
+}
+
+/** Tìm trên toàn bộ danh mục — dùng để phát hiện yêu cầu vượt quyền. */
+function findAnyCustomerInText(normalized: string) {
+  return matchCustomer(MOCK_CUSTOMERS, normalized);
+}
+
+function matchCustomer(pool: typeof MOCK_CUSTOMERS, normalized: string) {
+  return pool.find((customer) => {
     const name = normalizeVietnamese(customer.fullName);
     const code = normalizeVietnamese(customer.code);
     return normalized.includes(name) || normalized.includes(code);
@@ -879,15 +918,441 @@ function findCustomerInText(normalized: string) {
 }
 
 /**
+ * Câu trả lời khi chuyên viên hỏi về khách hàng NGOÀI danh mục được phân công.
+ *
+ * Ở backend thật, chặn ở tầng truy vấn (`AuthorizedScope` ép vào `WHERE`) chứ
+ * không phụ thuộc mô hình ngôn ngữ tự từ chối. Mock này tái hiện đúng kết quả
+ * mà người dùng nhìn thấy.
+ */
+function buildOutOfScopeResponse(customerName: string): GeneratedResponse {
+  const content = `Bạn chưa được phân công khách hàng ${customerName} nên tôi không truy cập được hồ sơ này.
+
+Nếu cần xử lý, đề nghị liên hệ chuyên viên đang quản lý hoặc yêu cầu phân công lại qua cấp quản lý trực tiếp.`;
+
+  return {
+    content,
+    phases: ['understanding'],
+    trace: {
+      summary: 'Yêu cầu bị chặn ở tầng phạm vi dữ liệu',
+      steps: [
+        {
+          id: 'step-scope-deny',
+          agent: 'planner',
+          title: 'Kiểm tra phạm vi dữ liệu được phép',
+          description:
+            'Khách hàng được nhắc tới không nằm trong danh mục phân công của tài khoản đang đăng nhập. Truy vấn bị chặn trước khi chạm tới dữ liệu.',
+          status: 'error',
+          tool: {
+            name: 'enforce_authorized_scope',
+            label: 'Áp phạm vi truy cập',
+            result: 'Từ chối — ngoài danh mục được phân công',
+          },
+          durationMs: 90,
+        },
+      ],
+    },
+    blocks: [
+      {
+        type: 'markdown',
+        content: `Bạn chưa được phân công khách hàng **${customerName}** nên tôi không truy cập được hồ sơ này.`,
+      },
+      {
+        type: 'alert',
+        variant: 'warning',
+        title: 'Yêu cầu vượt phạm vi được phân công',
+        content:
+          'Phạm vi dữ liệu được áp ngay ở tầng truy vấn: hệ thống không đọc hồ sơ ngoài danh mục của bạn, kể cả khi câu hỏi nêu đích danh. Mọi lượt từ chối đều được ghi vết kiểm toán.',
+      },
+    ],
+    suggestions: [
+      {
+        id: 'sug-scope-list',
+        label: 'Xem khách hàng tôi phụ trách',
+        prompt: 'Liệt kê các khách hàng tôi đang được phân công.',
+      },
+    ],
+  };
+}
+
+/**
+ * Câu hỏi về khách hàng KHÁC với khách hàng mà phiên chat đang gắn vào.
+ *
+ * Mỗi khách hàng có một phiên riêng: hồ sơ, tài liệu và kết luận của họ nằm gọn
+ * trong phiên đó. Nhờ vậy ngữ cảnh không trộn lẫn giữa các khách hàng và vết
+ * kiểm toán của mỗi hồ sơ là một mạch liền.
+ */
+function buildWrongSessionResponse(
+  askedName: string,
+  boundName: string,
+  askedInScope: boolean,
+  askedCustomerId?: string,
+): GeneratedResponse {
+  const content = askedInScope
+    ? `Phiên này là phiên làm việc của khách hàng ${boundName}, nên tôi chỉ trả lời về hồ sơ của ${boundName} tại đây.
+
+Để hỏi về ${askedName}, vui lòng mở phiên chat của khách hàng đó ở thanh bên (hoặc gõ "/" để chọn nhanh).`
+    : `Phiên này là phiên làm việc của khách hàng ${boundName}. Ngoài ra, ${askedName} không thuộc danh mục được phân công cho bạn.`;
+
+  return {
+    content,
+    phases: ['understanding'],
+    trace: {
+      summary: 'Câu hỏi nằm ngoài phạm vi của phiên chat',
+      steps: [
+        {
+          id: 'step-session-scope',
+          agent: 'planner',
+          title: 'Đối chiếu phạm vi phiên làm việc',
+          description: `Phiên đang gắn với khách hàng ${boundName}; câu hỏi lại nhắc tới ${askedName}. Không nạp dữ liệu của khách hàng khác vào phiên này.`,
+          status: 'error',
+          tool: {
+            name: 'enforce_session_customer',
+            label: 'Áp phạm vi phiên khách hàng',
+            result: `Từ chối — phiên thuộc về ${boundName}`,
+          },
+          durationMs: 80,
+        },
+      ],
+    },
+    blocks: [
+      {
+        type: 'markdown',
+        content: askedInScope
+          ? `Phiên này là phiên làm việc của **${boundName}**, nên tôi chỉ trả lời về hồ sơ của ${boundName} tại đây.`
+          : `Phiên này là phiên làm việc của **${boundName}**. Ngoài ra, **${askedName}** không thuộc danh mục được phân công cho bạn.`,
+      },
+      {
+        type: 'alert',
+        variant: 'warning',
+        title: askedInScope ? 'Cần mở đúng phiên khách hàng' : 'Ngoài phạm vi được phân công',
+        content: askedInScope
+          ? `Mỗi khách hàng có một phiên làm việc riêng để hồ sơ, tài liệu và kết luận không bị trộn lẫn. Hãy mở phiên của ${askedName} để tiếp tục.`
+          : 'Phạm vi dữ liệu được áp ở tầng truy vấn. Mọi lượt từ chối đều được ghi vết kiểm toán.',
+      },
+    ],
+    suggestions: askedInScope
+      ? [
+          {
+            id: 'sug-switch-session',
+            label: `Mở phiên của ${askedName}`,
+            prompt: `Cho tôi thông tin khách hàng ${askedName}.`,
+            ...(askedCustomerId ? { opensCustomerId: askedCustomerId } : {}),
+          },
+        ]
+      : [],
+  };
+}
+
+/**
+ * Câu hỏi đích danh một khách hàng nhưng đang ở phiên chung (không gắn khách nào).
+ * Hướng người dùng mở đúng phiên thay vì trả lời tại đây.
+ */
+function buildNeedCustomerSessionResponse(customerName: string, customerId?: string): GeneratedResponse {
+  const content = `Thông tin hồ sơ của ${customerName} chỉ được trao đổi trong phiên làm việc riêng của khách hàng này.
+
+Hãy mở phiên của ${customerName} ở thanh bên, hoặc gõ "/" trong ô nhập để chọn nhanh khách hàng.`;
+
+  return {
+    content,
+    phases: ['understanding'],
+    trace: {
+      summary: 'Yêu cầu cần được thực hiện trong phiên của khách hàng',
+      steps: [
+        {
+          id: 'step-need-session',
+          agent: 'planner',
+          title: 'Xác định phiên làm việc phù hợp',
+          description: `Câu hỏi thuộc về hồ sơ của ${customerName}. Phiên chung không nạp dữ liệu khách hàng để tránh trộn lẫn ngữ cảnh.`,
+          status: 'success',
+          tool: {
+            name: 'route_to_customer_session',
+            label: 'Định tuyến về phiên khách hàng',
+            result: `Cần mở phiên: ${customerName}`,
+          },
+          durationMs: 110,
+        },
+      ],
+    },
+    blocks: [
+      {
+        type: 'markdown',
+        content: `Thông tin hồ sơ của **${customerName}** chỉ được trao đổi trong **phiên làm việc riêng** của khách hàng này.`,
+      },
+      {
+        type: 'alert',
+        variant: 'info',
+        title: 'Mỗi khách hàng một phiên làm việc',
+        content:
+          'Cách tổ chức này giữ hồ sơ, tài liệu và kết luận của từng khách hàng tách bạch, đồng thời cho mỗi hồ sơ một vết kiểm toán liền mạch. Chọn khách hàng ở thanh bên hoặc gõ "/" để mở phiên.',
+      },
+    ],
+    suggestions: [
+      {
+        id: 'sug-open-session',
+        label: `Mở phiên của ${customerName}`,
+        prompt: `Cho tôi thông tin khách hàng ${customerName}.`,
+        // Bấm là ĐỔI PHIÊN, không gửi lại câu hỏi — nếu gửi lại sẽ lặp vô tận.
+        ...(customerId ? { opensCustomerId: customerId } : {}),
+      },
+    ],
+  };
+}
+
+/* ---------------- Dẫn chứng trỏ về đúng vị trí trên hồ sơ ---------------- */
+
+/**
+ * Dựng nguồn tham khảo có TOẠ ĐỘ THẬT trên hồ sơ scan.
+ *
+ * Mỗi mẩu nội dung được dò ngược về dòng chữ mà OCR đã đọc; dò không ra thì bỏ
+ * hẳn nguồn đó thay vì bịa toạ độ — cùng nguyên tắc với `compose.verify_claim`
+ * ở Engine: trích dẫn không resolve được là trích dẫn không hợp lệ.
+ */
+function buildDocumentSources(): {
+  sources: ChatSource[];
+  regionsByDocument: Map<string, DocumentRegion[]>;
+} {
+  const wanted: {
+    kind: DemoDocument['kind'];
+    needle: string;
+    label: string;
+    excerpt: string;
+  }[] = [
+    {
+      kind: 'profile',
+      needle: 'PHIẾU THÔNG TIN KHÁCH HÀNG DOANH NGHIỆP',
+      label: 'Định danh hồ sơ khách hàng',
+      excerpt: 'Phiếu thông tin khách hàng doanh nghiệp — căn cứ đối chiếu định danh.',
+    },
+    {
+      kind: 'profile',
+      needle: 'Vốn điều lệ',
+      label: 'Vốn điều lệ đăng ký',
+      excerpt: 'Vốn điều lệ ghi trên phiếu thông tin khách hàng.',
+    },
+    {
+      kind: 'financial',
+      needle: 'KIỂM TOÁN',
+      label: 'Đơn vị kiểm toán độc lập',
+      excerpt: 'Báo cáo tài chính đã được kiểm toán bởi đơn vị độc lập.',
+    },
+    {
+      kind: 'legal',
+      needle: 'SỞ KẾ HOẠCH VÀ ĐẦU TƯ',
+      label: 'Cơ quan cấp phép',
+      excerpt: 'Giấy chứng nhận đăng ký doanh nghiệp do Sở KH&ĐT cấp.',
+    },
+  ];
+
+  const sources: ChatSource[] = [];
+  const regionsByDocument = new Map<string, DocumentRegion[]>();
+
+  wanted.forEach((item, index) => {
+    const doc = findDocumentByKind(item.kind);
+    if (!doc) return;
+
+    const region = locateInDocument(doc.id, item.needle, item.label);
+    if (!region) return; // Không dò ra vị trí -> bỏ nguồn, KHÔNG bịa toạ độ.
+
+    const list = regionsByDocument.get(doc.id) ?? [];
+    list.push(region);
+    regionsByDocument.set(doc.id, list);
+
+    sources.push({
+      id: `src-doc-${index}`,
+      title: doc.title,
+      type: 'attachment',
+      excerpt: item.excerpt,
+      documentName: doc.title,
+      updatedAt: nowIso(),
+      locator: {
+        documentId: doc.id,
+        documentTitle: doc.title,
+        documentUrl: doc.url,
+        page: region.page,
+        regionId: region.id,
+      },
+    });
+  });
+
+  return { sources, regionsByDocument };
+}
+
+/** Khách hàng này có hồ sơ scan thật kèm toạ độ hay không. */
+function hasScannedDossier(customerId?: string): boolean {
+  return customerId === DOCUMENT_CUSTOMER_ID;
+}
+
+/**
+ * Dẫn chứng trên hồ sơ scan cho một khách hàng: nguồn có `locator` + danh sách
+ * hồ sơ kèm vùng đánh dấu. Khách hàng chưa số hoá hồ sơ thì trả rỗng.
+ */
+function buildDossierEvidence(customerId?: string): {
+  sources: ChatSource[];
+  highlightDocuments: NonNullable<ChatMessage['highlightDocuments']>;
+} {
+  if (!hasScannedDossier(customerId)) return { sources: [], highlightDocuments: [] };
+
+  const { sources, regionsByDocument } = buildDocumentSources();
+
+  const highlightDocuments = [...regionsByDocument.entries()].map(([documentId, regions]) => {
+    const doc = DEMO_DOCUMENTS.find((item) => item.id === documentId);
+    return {
+      name: doc?.title ?? 'Hồ sơ',
+      url: doc?.url ?? '',
+      regions,
+      activeRegionId: regions[0]?.id,
+    };
+  });
+
+  return { sources, highlightDocuments };
+}
+
+/** Phiên chung + câu hỏi nghiệp vụ nhưng chưa nêu khách hàng nào. */
+function buildPickCustomerResponse(): GeneratedResponse {
+  const mine = authorizedCustomers();
+  const content = `Nghiệp vụ này gắn với hồ sơ của một khách hàng cụ thể, nên cần được thực hiện trong phiên làm việc của khách hàng đó.
+
+Hãy chọn khách hàng ở thanh bên, hoặc gõ "/" trong ô nhập để mở phiên.`;
+
+  return {
+    content,
+    phases: ['understanding'],
+    blocks: [
+      {
+        type: 'markdown',
+        content:
+          'Nghiệp vụ này gắn với hồ sơ của một khách hàng cụ thể, nên cần được thực hiện trong **phiên làm việc của khách hàng đó**.',
+      },
+      {
+        type: 'alert',
+        variant: 'info',
+        title: 'Chọn khách hàng để mở phiên',
+        content:
+          'Gõ "/" trong ô nhập để chọn nhanh, hoặc bấm khách hàng ở thanh bên. Mỗi khách hàng có một phiên riêng giữ hồ sơ và kết luận tách bạch.',
+      },
+    ],
+    suggestions: mine.slice(0, 3).map((customer) => ({
+      id: `sug-pick-${customer.id}`,
+      label: customer.fullName,
+      prompt: `Cho tôi thông tin khách hàng ${customer.fullName}.`,
+      opensCustomerId: customer.id,
+    })),
+  };
+}
+
+/** Không có hồ sơ nào đang chờ trong danh mục được phân công. */
+function buildNoAssignedRecordResponse(): GeneratedResponse {
+  const content = `Hiện chưa có hồ sơ vay nào đang chờ thẩm định trong danh mục khách hàng được phân công cho bạn.`;
+
+  return {
+    content,
+    phases: ['understanding', 'searching'],
+    blocks: [
+      {
+        type: 'markdown',
+        content:
+          'Hiện chưa có hồ sơ vay nào đang chờ thẩm định trong danh mục khách hàng được phân công cho bạn.',
+      },
+    ],
+    suggestions: [
+      {
+        id: 'sug-empty-portfolio',
+        label: 'Xem khách hàng tôi phụ trách',
+        prompt: 'Liệt kê các khách hàng tôi đang được phân công.',
+      },
+    ],
+  };
+}
+
+/** Danh sách khách hàng thuộc quyền của chuyên viên đang đăng nhập. */
+function buildMyPortfolioResponse(): GeneratedResponse {
+  const mine = authorizedCustomers();
+  const session = getDemoSession();
+
+  const content = `Bạn đang được phân công ${mine.length} khách hàng: ${mine
+    .map((customer) => `${customer.fullName} (${customer.code})`)
+    .join(', ')}.`;
+
+  return {
+    content,
+    phases: ['understanding', 'searching', 'composing'],
+    blocks: [
+      {
+        type: 'markdown',
+        content: `Danh mục khách hàng của **${session?.profile.displayName ?? 'bạn'}** — ${session?.profile.branch ?? ''}`,
+      },
+      {
+        type: 'table',
+        title: `${mine.length} khách hàng được phân công`,
+        columns: [
+          { key: 'name', title: 'Khách hàng', align: 'left' },
+          { key: 'code', title: 'Mã CIF', align: 'left' },
+          { key: 'segment', title: 'Phân khúc', align: 'left' },
+          { key: 'risk', title: 'Mức rủi ro', align: 'left' },
+        ],
+        rows: mine.map((customer) => ({
+          name: customer.fullName,
+          code: customer.code,
+          segment: customer.segment === 'business' ? 'Doanh nghiệp' : 'Cá nhân',
+          risk: customer.riskLevel === 'high' ? 'Cao' : customer.riskLevel === 'low' ? 'Thấp' : 'Trung bình',
+        })),
+        footnote: 'Chỉ hiển thị khách hàng thuộc danh mục được phân công cho tài khoản của bạn.',
+      },
+    ],
+    suggestions: mine.slice(0, 2).map((customer) => ({
+      id: `sug-portfolio-${customer.id}`,
+      label: `Hồ sơ ${customer.fullName}`,
+      prompt: `Cho tôi thông tin khách hàng ${customer.fullName}.`,
+    })),
+  };
+}
+
+/**
  * Thẩm định hồ sơ vay bằng hệ multi-agent:
  * Planner phân rã việc -> Credit / Legal / Operations chạy song song -> tổng hợp.
  */
-function buildLoanReviewResponse(normalized: string): GeneratedResponse {
-  const customer = findCustomerInText(normalized);
-  const application =
+function buildLoanReviewResponse(
+  normalized: string,
+  boundCustomerId?: string,
+): GeneratedResponse {
+  // Trong phiên của một khách hàng, hồ sơ được thẩm định luôn là hồ sơ của họ.
+  const bound = boundCustomerId
+    ? MOCK_CUSTOMERS.find((item) => item.id === boundCustomerId)
+    : undefined;
+  const customer = bound ?? findCustomerInText(normalized);
+
+  // Hồ sơ nêu đích danh phải thuộc khách hàng trong phạm vi được phân công.
+  const namedApplication = MOCK_LOAN_APPLICATIONS.find((item) =>
+    normalized.includes(normalizeVietnamese(item.code)),
+  );
+  const fallbackApplication = authorizedCustomers()
+    .map((item) => findLoanByCustomer(item.id))
+    .find((item): item is LoanApplication => item !== undefined);
+
+  const resolved =
     (customer && findLoanByCustomer(customer.id)) ??
-    MOCK_LOAN_APPLICATIONS.find((item) => normalized.includes(normalizeVietnamese(item.code))) ??
-    MOCK_LOAN_APPLICATIONS[0];
+    (namedApplication && isInScope(namedApplication.customerId) ? namedApplication : undefined) ??
+    fallbackApplication;
+
+  if (namedApplication && !isInScope(namedApplication.customerId)) {
+    return buildOutOfScopeResponse(namedApplication.customerName);
+  }
+  if (!resolved) {
+    return buildNoAssignedRecordResponse();
+  }
+
+  const application = applyApprovalLimit(resolved);
+  const dossier = buildDossierEvidence(application.customerId);
+
+  // Báo cáo chuyên gia đầy đủ chỉ dựng được cho hồ sơ đã số hoá chứng từ.
+  const reportCustomer = customer ?? MOCK_CUSTOMERS.find((item) => item.id === application.customerId);
+  const reports = reportCustomer
+    ? buildExpertReports(
+        `Thẩm định hồ sơ vay ${application.code} của ${application.customerName}.`,
+        reportCustomer,
+        application,
+      )
+    : null;
 
   const failed = application.checks.filter((check) => !check.passed);
   const recommendation =
@@ -1007,6 +1472,8 @@ Quyết định cuối cùng thuộc thẩm quyền của chuyên viên. SH-AI k
 
 ${application.checks.length - failed.length}/${application.checks.length} chốt kiểm tra đạt. ${recommendation}`,
       },
+      // Báo cáo đầy đủ của 3 chuyên gia — có dẫn nguồn từng luận điểm.
+      ...(reports ? [{ type: 'expertReport' as const, bundle: reports }] : []),
       { type: 'loanApproval', application },
       ...(customer ? [{ type: 'customerSummary' as const, customer }] : []),
       {
@@ -1039,7 +1506,26 @@ ${application.checks.length - failed.length}/${application.checks.length} chốt
           'Quy định hạn mức phê duyệt theo từng cấp chuyên viên và điều kiện trình cấp cao hơn.',
         updatedAt: '2026-06-01T00:00:00.000Z',
       },
+      // Khách hàng có hồ sơ scan -> thêm dẫn chứng trỏ về đúng vị trí trên giấy tờ.
+      ...dossier.sources,
     ],
+    /*
+     * Vùng highlight lấy TỪ CHÍNH báo cáo khi có báo cáo: mọi trích dẫn trong
+     * báo cáo phải mở được đúng vùng của nó. Chỉ khi không có báo cáo mới dùng
+     * bộ dẫn chứng hồ sơ rút gọn.
+     */
+    ...(reports
+      ? {
+          highlightDocuments: reports.documents.map((doc) => ({
+            name: doc.name,
+            url: doc.url,
+            regions: doc.regions,
+            ...(doc.regions[0] ? { activeRegionId: doc.regions[0].id } : {}),
+          })),
+        }
+      : dossier.highlightDocuments.length
+        ? { highlightDocuments: dossier.highlightDocuments }
+        : {}),
     suggestions: [
       {
         id: 'sug-why-fail',
@@ -1061,8 +1547,16 @@ ${application.checks.length - failed.length}/${application.checks.length} chốt
 }
 
 /** Tra cứu nhanh hồ sơ một khách hàng. */
-function buildCustomerLookupResponse(normalized: string): GeneratedResponse {
-  const customer = findCustomerInText(normalized) ?? MOCK_CUSTOMERS[0];
+function buildCustomerLookupResponse(
+  normalized: string,
+  boundCustomerId?: string,
+): GeneratedResponse {
+  const bound = boundCustomerId
+    ? MOCK_CUSTOMERS.find((item) => item.id === boundCustomerId)
+    : undefined;
+  const customer = bound ?? findCustomerInText(normalized) ?? authorizedCustomers()[0];
+  if (!customer) return buildNoAssignedRecordResponse();
+
   const loan = findLoanByCustomer(customer.id);
 
   const trace: AgentTrace = {
@@ -1239,11 +1733,97 @@ Khi chuyển tiếp, chuyên viên sẽ hỗ trợ bạn:
   };
 }
 
-/** Chọn câu trả lời dựa trên nội dung câu hỏi. */
-function generateResponse(userContent: string, mode: ChatMode, hasAttachment: boolean): GeneratedResponse {
+/** Câu hỏi có nội dung nghiệp vụ gắn với một khách hàng cụ thể hay không. */
+function isCustomerScopedQuestion(normalized: string): boolean {
+  return /(tham dinh|phe duyet|ho so vay|duyet ho so|xet duyet|khach hang|cif|ho so khach|thong tin khach|du no|diem tin dung|tai san bao dam|chung tu)/.test(
+    normalized,
+  );
+}
+
+/**
+ * Chọn câu trả lời dựa trên nội dung câu hỏi VÀ phiên làm việc đang mở.
+ *
+ * `boundCustomerId` là khách hàng mà phiên chat gắn vào. Luật của phiên được áp
+ * TRƯỚC mọi agent: một phiên chỉ nói về đúng khách hàng của nó.
+ */
+function generateResponse(
+  userContent: string,
+  mode: ChatMode,
+  hasAttachment: boolean,
+  boundCustomerId?: string,
+): GeneratedResponse {
   const normalized = normalizeVietnamese(userContent);
 
+  const boundCustomer = boundCustomerId
+    ? MOCK_CUSTOMERS.find((item) => item.id === boundCustomerId)
+    : undefined;
+
+  // Phiên gắn khách hàng nhưng khách đó ngoài quyền -> chặn ngay.
+  if (boundCustomer && !isInScope(boundCustomer.id)) {
+    return buildOutOfScopeResponse(boundCustomer.fullName);
+  }
+
   if (hasAttachment || mode === 'document') return buildDocumentResponse();
+
+  // Danh mục khách hàng được phân công — hỏi ở phiên nào cũng trả lời được.
+  if (/(khach hang toi|toi phu trach|toi dang duoc phan cong|danh muc khach hang|phan cong cho toi)/.test(normalized)) {
+    return buildMyPortfolioResponse();
+  }
+
+  const named = findAnyCustomerInText(normalized);
+
+  /* ---------------- Luật phạm vi của phiên làm việc ---------------- */
+
+  if (boundCustomer) {
+    // Trong phiên của một khách hàng, hỏi về người khác -> từ chối.
+    if (named && named.id !== boundCustomer.id) {
+      return buildWrongSessionResponse(
+        named.fullName,
+        boundCustomer.fullName,
+        isInScope(named.id),
+        isInScope(named.id) ? named.id : undefined,
+      );
+    }
+    // Hồ sơ vay nêu đích danh nhưng thuộc khách khác -> cũng từ chối.
+    const namedLoan = MOCK_LOAN_APPLICATIONS.find((item) =>
+      normalized.includes(normalizeVietnamese(item.code)),
+    );
+    if (namedLoan && namedLoan.customerId !== boundCustomer.id) {
+      return buildWrongSessionResponse(
+        namedLoan.customerName,
+        boundCustomer.fullName,
+        isInScope(namedLoan.customerId),
+        isInScope(namedLoan.customerId) ? namedLoan.customerId : undefined,
+      );
+    }
+  } else {
+    // Phiên chung: hỏi đích danh khách hàng -> hướng về đúng phiên của họ.
+    if (named) {
+      return isInScope(named.id)
+        ? buildNeedCustomerSessionResponse(named.fullName, named.id)
+        : buildOutOfScopeResponse(named.fullName);
+    }
+    // Phiên chung không xử lý nghiệp vụ gắn với hồ sơ khách hàng.
+    if (isCustomerScopedQuestion(normalized)) {
+      return buildPickCustomerResponse();
+    }
+  }
+
+  // Hỏi đích danh khách hàng NGOÀI phạm vi -> chặn trước khi vào agent nào.
+  if (named && !isInScope(named.id)) {
+    return buildOutOfScopeResponse(named.fullName);
+  }
+
+  /* ---------------- Trong phiên khách hàng: mặc định về khách đó ---------------- */
+
+  if (boundCustomer) {
+    if (mode === 'credit' || /(tham dinh|phe duyet|ho so vay|duyet ho so|xet duyet)/.test(normalized)) {
+      return buildLoanReviewResponse(normalized, boundCustomer.id);
+    }
+    if (isCustomerScopedQuestion(normalized) || named) {
+      return buildCustomerLookupResponse(normalized, boundCustomer.id);
+    }
+  }
 
   // Chế độ nghiệp vụ do chuyên viên chọn -> ưu tiên agent tương ứng.
   if (mode === 'credit' && !/(khach hang|cif)/.test(normalized)) {
@@ -1303,9 +1883,15 @@ function generateResponse(userContent: string, mode: ChatMode, hasAttachment: bo
 export async function* mockStreamAssistantResponse(
   conversationId: string,
   userContent: string,
-  options: { mode?: ChatMode; hasAttachment?: boolean; signal?: AbortSignal } = {},
+  options: {
+    mode?: ChatMode;
+    hasAttachment?: boolean;
+    signal?: AbortSignal;
+    /** Khách hàng mà phiên chat gắn vào — quyết định phạm vi trả lời. */
+    customerId?: string;
+  } = {},
 ): AsyncGenerator<StreamEvent> {
-  const { mode = 'general', hasAttachment = false, signal } = options;
+  const { mode = 'general', hasAttachment = false, signal, customerId } = options;
 
   const triggeredError = detectErrorTrigger(userContent);
   if (triggeredError) {
@@ -1315,7 +1901,7 @@ export async function* mockStreamAssistantResponse(
     return;
   }
 
-  const response = generateResponse(userContent, mode, hasAttachment);
+  const response = generateResponse(userContent, mode, hasAttachment, customerId);
   const messageId = createId('msg');
   const createdAt = nowIso();
 
@@ -1351,6 +1937,9 @@ export async function* mockStreamAssistantResponse(
     ...(response.sources ? { sources: response.sources } : {}),
     ...(response.suggestions ? { suggestions: response.suggestions } : {}),
     ...(response.trace ? { trace: response.trace } : {}),
+    ...(response.highlightDocuments?.length
+      ? { highlightDocuments: response.highlightDocuments }
+      : {}),
   };
 
   mockCommitAssistantMessage(message);

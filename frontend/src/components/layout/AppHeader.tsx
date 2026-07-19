@@ -1,4 +1,4 @@
-import { Button, Dropdown, Grid, Tooltip } from 'antd';
+import { Button, Dropdown, Grid, Tag, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import { Link } from 'react-router-dom';
 import {
@@ -13,6 +13,7 @@ import {
   MoreOutlined,
   PlusOutlined,
   ShareAltOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 import { SHBLogo } from '@/components/common/SHBLogo';
 import { StatusBadge } from '@/components/common/StatusBadge';
@@ -36,6 +37,11 @@ export interface AppHeaderProps {
   onExport: () => void;
   onFindBranch: () => void;
   hasSources: boolean;
+  /**
+   * Khách hàng mà phiên chat đang gắn vào. Hiển thị rõ để chuyên viên luôn biết
+   * mình đang làm việc trên hồ sơ của ai — phiên chỉ trả lời về khách hàng này.
+   */
+  sessionCustomerName?: string;
   /**
    * Khi Welcome State hiển thị, h1 của màn hình là lời chào ở giữa trang.
    * Ngược lại, tiêu đề hội thoại chính là h1. Cờ này đảm bảo trên màn hình
@@ -61,6 +67,7 @@ export function AppHeader({
   onFindBranch,
   hasSources,
   titleAsHeading,
+  sessionCustomerName,
 }: AppHeaderProps) {
   const screens = Grid.useBreakpoint();
   const isMobile = !screens.md;
@@ -133,7 +140,16 @@ export function AppHeader({
           ) : (
             <span className={styles.title}>{title}</span>
           )}
-          {!isMobile && <StatusBadge tone="online" label="Đang hoạt động" />}
+          {!isMobile &&
+            (sessionCustomerName ? (
+              <Tooltip title={`Phiên này chỉ trả lời về hồ sơ của ${sessionCustomerName}`}>
+                <Tag icon={<UserOutlined />} color="processing" style={{ marginInlineEnd: 0 }}>
+                  {sessionCustomerName}
+                </Tag>
+              </Tooltip>
+            ) : (
+              <StatusBadge tone="online" label="Đang hoạt động" />
+            ))}
         </div>
 
         {!isMobile && (

@@ -6,6 +6,8 @@ export interface SuggestedQuestionsProps {
   onSelect: (prompt: string) => void;
   label?: string;
   disabled?: boolean;
+  /** Gợi ý mở phiên khách hàng -> chuyển phiên thay vì gửi câu hỏi. */
+  onOpenCustomer?: (customerId: string) => void;
 }
 
 /** Chip gợi ý câu hỏi tiếp theo, hiển thị sau câu trả lời AI. */
@@ -14,6 +16,7 @@ export function SuggestedQuestions({
   onSelect,
   label = 'Bạn có thể hỏi tiếp',
   disabled = false,
+  onOpenCustomer,
 }: SuggestedQuestionsProps) {
   if (!suggestions.length) return null;
 
@@ -26,7 +29,13 @@ export function SuggestedQuestions({
             key={suggestion.id}
             type="button"
             className={styles.chip}
-            onClick={() => onSelect(suggestion.prompt)}
+            onClick={() => {
+              if (suggestion.opensCustomerId && onOpenCustomer) {
+                onOpenCustomer(suggestion.opensCustomerId);
+                return;
+              }
+              onSelect(suggestion.prompt);
+            }}
             disabled={disabled}
           >
             {suggestion.label}

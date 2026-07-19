@@ -1,3 +1,5 @@
+import type { SourceLocator } from '@/types/source';
+import type { HighlightDocument } from './HighlightDocumentViewer';
 import { useEffect, useRef } from 'react';
 import { Avatar, Skeleton } from 'antd';
 import { MessageOutlined } from '@ant-design/icons';
@@ -22,6 +24,10 @@ export interface MessageListProps {
   onViewSources?: (message: ChatMessage) => void;
   busy?: boolean;
   onViewCustomer?: (customerId: string) => void;
+  /** Mở phiên làm việc của một khách hàng (đổi phiên chat, không chỉ mở panel). */
+  onOpenCustomerSession?: (customerId: string) => void;
+  onOpenLocator?: (locator: SourceLocator) => void;
+  onOpenHighlightDocument?: (doc: HighlightDocument) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,
@@ -55,6 +61,9 @@ export function MessageList({
   onViewSources,
   busy = false,
   onViewCustomer,
+  onOpenCustomerSession,
+  onOpenLocator,
+  onOpenHighlightDocument,
   onLoanDecision,
 }: MessageListProps) {
   const anchorRef = useRef<HTMLDivElement>(null);
@@ -124,6 +133,9 @@ export function MessageList({
               onViewSources={onViewSources}
               busy={busy}
               onViewCustomer={onViewCustomer}
+              onOpenCustomerSession={onOpenCustomerSession}
+              onOpenLocator={onOpenLocator}
+              onOpenHighlightDocument={onOpenHighlightDocument}
               onLoanDecision={onLoanDecision}
             />
           ),

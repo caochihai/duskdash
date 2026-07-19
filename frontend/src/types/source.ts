@@ -19,6 +19,22 @@ export const SOURCE_TYPE_LABEL: Record<SourceType, string> = {
   announcement: 'Thông báo',
 };
 
+/**
+ * Địa chỉ chính xác của dẫn chứng trên hồ sơ gốc.
+ *
+ * Tương ứng `Citation.bbox` ở backend (`libs/contracts/citation.py`), resolve
+ * qua `GET /citations/{id}/resolve` về bảng `document.document_line`. Có trường
+ * này thì giao diện mở được đúng trang, đúng vùng và khoanh đỏ.
+ */
+export interface SourceLocator {
+  documentId: string;
+  documentTitle: string;
+  documentUrl: string;
+  page: number;
+  /** Vùng cần khoanh đỏ khi mở hồ sơ. */
+  regionId: string;
+}
+
 export interface ChatSource {
   id: string;
   title: string;
@@ -27,4 +43,6 @@ export interface ChatSource {
   excerpt: string;
   updatedAt?: string;
   documentName?: string;
+  /** Có mặt khi nguồn trỏ về một vị trí cụ thể trên hồ sơ đã OCR. */
+  locator?: SourceLocator;
 }

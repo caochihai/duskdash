@@ -1,3 +1,5 @@
+import type { SourceLocator } from '@/types/source';
+import type { HighlightDocument } from './HighlightDocumentViewer';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MessageList } from './MessageList';
 import { WelcomeState } from './WelcomeState';
@@ -32,7 +34,14 @@ export interface ChatWorkspaceProps {
   /** Danh sách khách hàng cho lệnh `/` trong composer. */
   customers?: Customer[];
   onSelectCustomer?: (customer: Customer) => void;
+  /** Backend tự tạo khách hàng nháp khi upload hồ sơ chưa gắn khách. */
+  onCustomerAutoCreated?: (customerId: string) => void;
+  /** Bấm thumbnail hồ sơ highlight trong chat -> mở ở panel bên phải. */
+  onOpenHighlightDocument?: (doc: HighlightDocument) => void;
   onViewCustomer?: (customerId: string) => void;
+  /** Mở phiên làm việc của một khách hàng (đổi phiên chat, không chỉ mở panel). */
+  onOpenCustomerSession?: (customerId: string) => void;
+  onOpenLocator?: (locator: SourceLocator) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,
@@ -64,7 +73,11 @@ export function ChatWorkspace({
   staffName,
   customers,
   onSelectCustomer,
+  onCustomerAutoCreated,
+  onOpenHighlightDocument,
   onViewCustomer,
+  onOpenCustomerSession,
+  onOpenLocator,
   onLoanDecision,
   uploadContext,
 }: ChatWorkspaceProps) {
@@ -104,6 +117,9 @@ export function ChatWorkspace({
               onViewSources={onViewSources}
               busy={isStreaming}
               onViewCustomer={onViewCustomer}
+              onOpenCustomerSession={onOpenCustomerSession}
+              onOpenLocator={onOpenLocator}
+              onOpenHighlightDocument={onOpenHighlightDocument}
               onLoanDecision={onLoanDecision}
             />
           </motion.div>
@@ -119,6 +135,7 @@ export function ChatWorkspace({
         disabled={composerDisabled}
         customers={customers}
         onSelectCustomer={onSelectCustomer}
+        onCustomerAutoCreated={onCustomerAutoCreated}
         uploadContext={uploadContext}
       />
     </div>

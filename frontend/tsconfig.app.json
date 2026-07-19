@@ -23,6 +23,9 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,
 
+    /* Toạ độ hồ sơ demo được nạp từ JSON sinh sẵn (demoDocumentLines.json). */
+    "resolveJsonModule": true,
+
     /* Paths */
     "baseUrl": ".",
     "paths": {

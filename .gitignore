@@ -86,3 +86,19 @@ terraform.rc
 
 # Docker / local runtime
 docker-compose*.override.yml
+
+# Claude Code local config (allowlist có thể chứa API key) — không bao giờ commit
+.claude/
+
+# Azure Cognitive Services — chứa endpoint + KEY THẬT, KHÔNG BAO GIỜ commit
+Azure_Cognitive_Services_Resources.md
+
+# OCR fixtures sinh từ tài liệu khách (có thể chứa PII) — không commit
+services/engine/fixtures/ocr/*.json
+
+# Ảnh Zalo gốc rơi ở root (bản chuẩn nằm trong agent_engine/sample_docs/)
+/z*.jpg
+
+# Agent engine local runtime
+agent_engine/data/
+agent_engine/logs/

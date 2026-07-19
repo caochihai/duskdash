@@ -1,0 +1,240 @@
+.report {
+  border: 1px solid var(--shb-color-border, #eae3da);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--shb-color-surface, #fff);
+  margin: 12px 0;
+}
+
+/* ---------------- Kết luận ---------------- */
+
+.verdict {
+  padding: 16px 18px;
+  background: linear-gradient(135deg, #fff7f0 0%, #fffdf9 100%);
+  border-bottom: 1px solid var(--shb-color-border, #eae3da);
+}
+
+.verdictHead {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.verdictTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--shb-color-navy-700, #2f2e79);
+}
+
+.recommendation {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--shb-color-text-primary, #18212b);
+  margin: 0;
+}
+
+/* ---------------- Trạng thái 3 chuyên gia ---------------- */
+
+.domainStrip {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--shb-color-border, #eae3da);
+  background: var(--shb-color-surface-soft, #fff9f4);
+}
+
+.domainPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid var(--shb-color-border, #eae3da);
+  background: #fff;
+}
+
+/* ---------------- Điều kiện kèm theo ---------------- */
+
+.conditions {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--shb-color-border, #eae3da);
+  background: #fffbf5;
+}
+
+.conditionsTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #b9450c;
+  margin: 0 0 8px;
+}
+
+.conditionList {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}
+
+.conditionList li {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--shb-color-text-primary, #18212b);
+}
+
+/* ---------------- Nội dung báo cáo ---------------- */
+
+.body {
+  padding: 6px 18px 16px;
+}
+
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--shb-color-navy-700, #2f2e79);
+  margin: 14px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.summary {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--shb-color-text-secondary, #667085);
+  margin: 0 0 10px;
+  padding-left: 10px;
+  border-left: 3px solid var(--shb-color-orange-200, #fdd3b5);
+}
+
+.claimList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.claim {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 8px;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--shb-color-text-primary, #18212b);
+}
+
+.claimMark {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.markPositive {
+  color: #12805c;
+}
+
+.markWarning {
+  color: #b9450c;
+}
+
+.markNeutral {
+  color: var(--shb-color-text-muted, #98a2b3);
+}
+
+/* Nhãn phân biệt suy luận với dữ kiện đọc thẳng từ nguồn. */
+.inferenceTag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #6941c6;
+  background: #f4ebff;
+  border: 1px solid #e9d7fe;
+  vertical-align: 1px;
+}
+
+/* ---------------- Chip trích dẫn ---------------- */
+
+.citeGroup {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: 4px;
+  vertical-align: 1px;
+}
+
+.cite {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  border: 1px solid var(--shb-color-orange-200, #fdd3b5);
+  background: var(--shb-color-orange-50, #fff7f0);
+  color: var(--shb-color-orange-700, #b9450c);
+  font-size: 10.5px;
+  font-weight: 700;
+  line-height: 16px;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.cite:hover,
+.cite:focus-visible {
+  background: var(--shb-color-orange-500, #f37021);
+  border-color: var(--shb-color-orange-500, #f37021);
+  color: #fff;
+}
+
+/* Trích dẫn mở được tài liệu -> viền đậm hơn để phân biệt. */
+.citeDocument {
+  border-style: solid;
+  border-color: var(--shb-color-orange-400, #f88c46);
+}
+
+.noSource {
+  font-size: 11px;
+  color: #b42318;
+  margin-left: 6px;
+}
+
+/* ---------------- Popover nguồn ---------------- */
+
+.popQuote {
+  max-width: 340px;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.popMeta {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--shb-color-text-muted, #98a2b3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.footer {
+  padding: 10px 18px;
+  border-top: 1px solid var(--shb-color-border, #eae3da);
+  background: var(--shb-color-surface-soft, #fff9f4);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--shb-color-text-secondary, #667085);
+}
+
+@media (max-width: 640px) {
+  .verdict,
+  .body,
+  .conditions,
+  .domainStrip {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+}

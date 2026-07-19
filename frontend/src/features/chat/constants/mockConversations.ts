@@ -31,7 +31,7 @@ export const MOCK_CONVERSATIONS: Conversation[] = [
   },
   {
     id: 'conv-compliance-check',
-    title: 'Kiểm tra tuân thủ Minh Phát',
+    title: 'Kiểm tra tuân thủ VinaNova',
     preview: 'Sàng lọc AML/KYC cho khách hàng doanh nghiệp',
     createdAt: hoursAgo(6),
     updatedAt: hoursAgo(4),

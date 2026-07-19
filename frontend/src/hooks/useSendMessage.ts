@@ -12,6 +12,8 @@ export interface SendMessageInput {
   attachments?: ChatAttachment[];
   mode?: ChatMode;
   assignmentLeaseToken?: string;
+  /** Khách hàng mà phiên chat đang gắn vào (nếu là phiên của một khách hàng). */
+  customerId?: string;
 }
 
 interface UseSendMessageResult {
@@ -106,6 +108,7 @@ export function useSendMessage(conversationId: string | null): UseSendMessageRes
           mode: input.mode,
           hasAttachment: Boolean(input.attachments?.length),
           signal: controller.signal,
+          ...(input.customerId ? { customerId: input.customerId } : {}),
         });
 
         for await (const event of stream) {

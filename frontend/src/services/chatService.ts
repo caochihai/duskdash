@@ -70,6 +70,11 @@ export interface StreamOptions {
   mode?: ChatMode;
   hasAttachment?: boolean;
   signal?: AbortSignal;
+  /**
+   * Khách hàng mà phiên chat này gắn vào. Phiên của một khách hàng chỉ trả lời
+   * về đúng khách hàng đó; câu hỏi về người khác bị từ chối ngay tại phiên.
+   */
+  customerId?: string;
 }
 
 /** The existing animated stream remains available for the isolated frontend mock. */

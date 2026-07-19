@@ -1,9 +1,14 @@
 import { Button, Drawer, Grid, Skeleton, Tag } from 'antd';
-import { ExportOutlined, FileTextOutlined } from '@ant-design/icons';
+import { AimOutlined, ExportOutlined, FileTextOutlined } from '@ant-design/icons';
 import { motion, useReducedMotion } from 'motion/react';
 import { EmptyState } from '@/components/common/EmptyState';
 import { formatDate } from '@/utils/formatDate';
-import { SOURCE_TYPE_LABEL, type ChatSource, type SourceType } from '@/types/source';
+import {
+  SOURCE_TYPE_LABEL,
+  type ChatSource,
+  type SourceLocator,
+  type SourceType,
+} from '@/types/source';
 import styles from './SourceDrawer.module.css';
 
 export interface SourceDrawerProps {
@@ -11,6 +16,8 @@ export interface SourceDrawerProps {
   onClose: () => void;
   sources: ChatSource[];
   loading?: boolean;
+  /** Mở hồ sơ gốc và khoanh đỏ đúng vùng được trích dẫn. */
+  onOpenLocator?: (locator: SourceLocator) => void;
 }
 
 /** Màu Tag theo loại nguồn — kèm nhãn chữ, không chỉ dựa vào màu. */
@@ -30,7 +37,13 @@ const SOURCE_TAG_COLOR: Record<SourceType, string> = {
  * Ant Design Drawer đã quản lý focus trap và trả focus về phần tử trigger
  * (nút "Xem nguồn") khi đóng.
  */
-export function SourceDrawer({ open, onClose, sources, loading = false }: SourceDrawerProps) {
+export function SourceDrawer({
+  open,
+  onClose,
+  sources,
+  loading = false,
+  onOpenLocator,
+}: SourceDrawerProps) {
   const screens = Grid.useBreakpoint();
   const prefersReducedMotion = useReducedMotion();
 
@@ -97,6 +110,21 @@ export function SourceDrawer({ open, onClose, sources, loading = false }: Source
                     <span className={styles.updated}>
                       {source.updatedAt ? `Cập nhật ${formatDate(source.updatedAt)}` : 'Tài liệu nội bộ'}
                     </span>
+                  )}
+
+                  {/*
+                    Nguồn có toạ độ -> mở thẳng hồ sơ và khoanh đỏ đúng vùng.
+                    Đây là đường đi từ một câu trong câu trả lời về đúng chỗ trên giấy tờ.
+                  */}
+                  {source.locator && onOpenLocator && (
+                    <Button
+                      type="link"
+                      size="small"
+                      icon={<AimOutlined />}
+                      onClick={() => onOpenLocator(source.locator!)}
+                    >
+                      Xem trên hồ sơ
+                    </Button>
                   )}
 
                   {source.url && (

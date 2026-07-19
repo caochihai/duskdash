@@ -17,6 +17,7 @@ import { LoanApprovalCard } from '@/features/customer/components/LoanApprovalCar
 import { formatCurrency, formatRate } from '@/utils/formatCurrency';
 import { formatDate } from '@/utils/formatDate';
 import { shbColors } from '@/theme/tokens';
+import { useDemoSession } from '@/auth/demoSession';
 import {
   findCustomerById,
   findLoansByCustomer,
@@ -61,16 +62,27 @@ export default function CustomerDetailPage() {
   const [tab, setTab] = useState('overview');
   const [reviewLoan, setReviewLoan] = useState<LoanApplication | null>(null);
 
-  const customer = id ? findCustomerById(id) : undefined;
-  const loans = useMemo(() => (id ? findLoansByCustomer(id) : []), [id]);
+  const session = useDemoSession();
+
+  /**
+   * Rào phạm vi quyền: gõ thẳng `/customer/:id` của khách ngoài danh mục được
+   * phân công cũng không xem được. Ở backend thật, ràng buộc này nằm trong câu
+   * truy vấn (`AuthorizedScope`), không chỉ ở giao diện.
+   */
+  const inScope = id ? (session?.authorizedCustomerIds.includes(id) ?? false) : false;
+
+  const customer = id && inScope ? findCustomerById(id) : undefined;
+  const loans = useMemo(() => (id && inScope ? findLoansByCustomer(id) : []), [id, inScope]);
 
   const pendingLoans = loans.filter((l) => l.status === 'pending' || l.status === 'need-info');
   const historyLoans = loans.filter(
     (l) => l.status === 'approved' || l.status === 'rejected' || l.status === 'closed',
   );
 
-  // Không tìm thấy khách hàng.
+  // Ngoài phạm vi được phân công, hoặc không tồn tại.
   if (!customer) {
+    const outOfScope = Boolean(id) && !inScope;
+
     return (
       <div className={styles.page}>
         <header className={styles.header}>
@@ -80,7 +92,15 @@ export default function CustomerDetailPage() {
           </Link>
         </header>
         <div className={styles.container}>
-          <Empty description="Không tìm thấy khách hàng" style={{ paddingTop: 60 }}>
+          <Empty
+            image={outOfScope ? <LockOutlined style={{ fontSize: 48 }} /> : undefined}
+            description={
+              outOfScope
+                ? 'Khách hàng này không thuộc danh mục được phân công cho bạn.'
+                : 'Không tìm thấy khách hàng'
+            }
+            style={{ paddingTop: 60 }}
+          >
             <Button type="primary" onClick={() => navigate('/')}>
               Quay lại
             </Button>

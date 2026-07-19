@@ -1,5 +1,7 @@
+import type { SourceLocator } from '@/types/source';
+import type { HighlightDocument } from './HighlightDocumentViewer';
 import { useState } from 'react';
-import { App, Alert, Button, Tooltip } from 'antd';
+import { App, Alert, Button, Image, Tooltip } from 'antd';
 import {
   BookOutlined,
   CopyOutlined,
@@ -12,6 +14,7 @@ import {
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import { motion, useReducedMotion } from 'motion/react';
+import { MarkdownContent } from './MarkdownContent';
 import { MessageBlocks } from './MessageBlocks';
 import { SuggestedQuestions } from './SuggestedQuestions';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -28,6 +31,12 @@ export interface AssistantMessageProps {
   /** Có tin nhắn khác đang được tạo -> khoá các action gửi. */
   busy?: boolean;
   onViewCustomer?: (customerId: string) => void;
+  /** Mở phiên làm việc của một khách hàng (đổi phiên chat, không chỉ mở panel). */
+  onOpenCustomerSession?: (customerId: string) => void;
+  /** Mở hồ sơ gốc tại vùng của một trích dẫn trong báo cáo chuyên gia. */
+  onOpenLocator?: (locator: SourceLocator) => void;
+  /** Bấm thumbnail hồ sơ highlight -> mở ở panel bên phải. */
+  onOpenHighlightDocument?: (doc: HighlightDocument) => void;
   onLoanDecision?: (
     application: LoanApplication,
     status: LoanApplicationStatus,
@@ -43,6 +52,9 @@ export function AssistantMessage({
   onViewSources,
   busy = false,
   onViewCustomer,
+  onOpenCustomerSession,
+  onOpenLocator,
+  onOpenHighlightDocument,
   onLoanDecision,
 }: AssistantMessageProps) {
   const { message: messageApi } = App.useApp();
@@ -149,10 +161,11 @@ export function AssistantMessage({
               onPrompt={onPrompt}
               disabled={busy}
               onViewCustomer={onViewCustomer}
+              onOpenLocator={onOpenLocator}
               onLoanDecision={onLoanDecision}
             />
           ) : (
-            <p className={styles.streamingText}>{message.content}</p>
+            <MarkdownContent content={message.content} />
           ))}
 
         {(isComplete || isStopped) && (
@@ -216,8 +229,61 @@ export function AssistantMessage({
           </div>
         )}
 
+        {isComplete && message.highlightDocuments && message.highlightDocuments.length > 0 && (
+          <div
+            role="group"
+            aria-label="Hồ sơ đã highlight"
+            style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 12 }}
+          >
+            {message.highlightDocuments.map((doc) => (
+              <button
+                key={doc.url}
+                type="button"
+                onClick={() => onOpenHighlightDocument?.(doc)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  padding: 0,
+                  cursor: 'pointer',
+                  width: 148,
+                }}
+                aria-label={`Mở ${doc.name} ở panel hồ sơ`}
+              >
+                <Image
+                  src={doc.url}
+                  alt={doc.name}
+                  width={148}
+                  height={104}
+                  preview={false}
+                  style={{
+                    objectFit: 'cover',
+                    borderRadius: 10,
+                    border: '1px solid #EAE3DA',
+                  }}
+                />
+                <span
+                  style={{
+                    display: 'block',
+                    fontSize: 12,
+                    color: '#667085',
+                    marginTop: 4,
+                    textAlign: 'center',
+                  }}
+                >
+                  {doc.name}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
+
         {isComplete && message.suggestions && message.suggestions.length > 0 && (
-          <SuggestedQuestions suggestions={message.suggestions} onSelect={onPrompt} disabled={busy} />
+          <SuggestedQuestions
+            suggestions={message.suggestions}
+            onSelect={onPrompt}
+            disabled={busy}
+            {...(onOpenCustomerSession ? { onOpenCustomer: onOpenCustomerSession } : {})}
+          />
         )}
       </div>
     </motion.div>

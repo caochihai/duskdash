@@ -257,7 +257,7 @@ export const MOCK_COMPLIANCE_MESSAGES: ChatMessage[] = [
     id: 'msg-comp-user-1',
     conversationId: 'conv-compliance-check',
     role: 'user',
-    content: 'Kiểm tra tuân thủ AML/KYC cho khách hàng Công ty TNHH Thương mại Minh Phát.',
+    content: 'Kiểm tra tuân thủ AML/KYC cho khách hàng Công ty CP Bao bì VinaNova.',
     status: 'completed',
     createdAt: nowMinus(240),
   },
@@ -266,7 +266,7 @@ export const MOCK_COMPLIANCE_MESSAGES: ChatMessage[] = [
     conversationId: 'conv-compliance-check',
     role: 'assistant',
     content:
-      'Đã hoàn tất sàng lọc AML/KYC cho Công ty TNHH Thương mại Minh Phát. Không phát hiện trùng khớp danh sách cảnh báo. Hồ sơ định danh doanh nghiệp còn hiệu lực.',
+      'Đã hoàn tất sàng lọc AML/KYC cho Công ty CP Bao bì VinaNova. Không phát hiện trùng khớp danh sách cảnh báo. Hồ sơ định danh doanh nghiệp còn hiệu lực.',
     status: 'completed',
     createdAt: nowMinus(239),
     trace: {
@@ -311,7 +311,7 @@ export const MOCK_COMPLIANCE_MESSAGES: ChatMessage[] = [
     blocks: [
       {
         type: 'markdown',
-        content: `Đã hoàn tất sàng lọc **AML/KYC** cho **Công ty TNHH Thương mại Minh Phát**.
+        content: `Đã hoàn tất sàng lọc **AML/KYC** cho **Công ty CP Bao bì VinaNova**.
 
 ### Kết quả
 

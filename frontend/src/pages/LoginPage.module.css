@@ -1,0 +1,192 @@
+/**
+ * Trang đăng nhập — bố cục 2 cột trên desktop:
+ *   trái  = tấm thương hiệu (giới thiệu năng lực hệ chuyên gia số)
+ *   phải  = biểu mẫu đăng nhập
+ * Dưới 992px gập thành 1 cột, chỉ còn biểu mẫu để không đẩy nội dung chính
+ * xuống dưới màn hình đầu tiên.
+ */
+
+.page {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 1.05fr 1fr;
+  align-items: stretch;
+}
+
+.brandPane {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 28px;
+  padding: 56px 64px;
+}
+
+.brandHeading {
+  max-width: 30ch;
+  margin: 0;
+  font-size: clamp(28px, 2.4vw, 40px);
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--shb-color-navy-700, #2f2e79);
+}
+
+.brandLead {
+  max-width: 46ch;
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--shb-color-text-secondary, #667085);
+}
+
+.capabilityList {
+  display: grid;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 52ch;
+}
+
+.capability {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+
+.capabilityIcon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--shb-color-orange-50, #fff7f0);
+  color: var(--shb-color-orange-500, #f37021);
+  font-size: 17px;
+}
+
+.capabilityTitle {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--shb-color-text-primary, #18212b);
+}
+
+.capabilityText {
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--shb-color-text-secondary, #667085);
+}
+
+/* ---------------- Cột biểu mẫu ---------------- */
+
+.formPane {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 24px;
+}
+
+.formCard {
+  width: 100%;
+  max-width: 420px;
+}
+
+.formHeader {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.formTitle {
+  margin: 16px 0 4px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--shb-color-text-primary, #18212b);
+}
+
+.formSubtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--shb-color-text-secondary, #667085);
+}
+
+/* ---------------- Tài khoản demo ---------------- */
+
+.demoSection {
+  margin-top: 20px;
+}
+
+.demoAccounts {
+  display: grid;
+  gap: 10px;
+}
+
+.demoAccount {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  align-items: center;
+  width: 100%;
+  padding: 12px 14px;
+  text-align: left;
+  border: 1px solid var(--shb-color-border, #eae3da);
+  border-radius: 10px;
+  background: var(--shb-color-surface-soft, #fff9f4);
+  cursor: pointer;
+  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+}
+
+.demoAccount:hover,
+.demoAccount:focus-visible {
+  border-color: var(--shb-color-orange-300, #fcb37f);
+  box-shadow: 0 4px 14px rgb(243 112 33 / 12%);
+  transform: translateY(-1px);
+}
+
+.demoAccountName {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--shb-color-text-primary, #18212b);
+}
+
+.demoAccountMeta {
+  grid-column: 1 / -1;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--shb-color-text-secondary, #667085);
+}
+
+.demoAccountCredential {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--shb-color-orange-600, #dd5a12);
+  white-space: nowrap;
+}
+
+@media (max-width: 991px) {
+  .page {
+    grid-template-columns: 1fr;
+  }
+
+  .brandPane {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .demoAccount {
+    transition: none;
+  }
+
+  .demoAccount:hover,
+  .demoAccount:focus-visible {
+    transform: none;
+  }
+}

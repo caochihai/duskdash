@@ -1,4 +1,5 @@
 import apiClient, { USE_MOCK_API } from './apiClient';
+import { getDemoSession } from '@/auth/demoSession';
 import { MOCK_CUSTOMERS } from '@/features/chat/constants/mockCustomers';
 import type { Customer, RiskLevel } from '@/types/customer';
 import type {
@@ -12,7 +13,15 @@ interface BackendMe {
 }
 
 export async function listCustomers(signal?: AbortSignal): Promise<Customer[]> {
-  if (USE_MOCK_API) return MOCK_CUSTOMERS;
+  if (USE_MOCK_API) {
+    // Lọc theo phạm vi được phân công của chuyên viên đang đăng nhập — bản thu
+    // nhỏ của `AuthorizedScope` mà backend thật ép vào câu truy vấn SQL.
+    const session = getDemoSession();
+    if (!session) return [];
+    return MOCK_CUSTOMERS.filter((customer) =>
+      session.authorizedCustomerIds.includes(customer.id),
+    );
+  }
 
   const response = await apiClient.get<BackendPage<BackendCustomer>>('/customers', {
     signal,

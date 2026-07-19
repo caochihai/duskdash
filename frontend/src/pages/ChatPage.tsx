@@ -7,6 +7,7 @@ import { ConversationSidebar } from '@/features/chat/components/ConversationSide
 import { MobileNavigationDrawer } from '@/components/layout/MobileNavigationDrawer';
 import { ChatWorkspace } from '@/features/chat/components/ChatWorkspace';
 import { SourceDrawer } from '@/features/chat/components/SourceDrawer';
+import { HighlightDocumentViewer, type HighlightDocument } from '@/features/chat/components/HighlightDocumentViewer';
 import { CustomerWorkspacePanel } from '@/features/customer/components/CustomerWorkspacePanel';
 import {
   DEMO_APPROVAL_LIMIT,
@@ -28,28 +29,36 @@ import { USE_MOCK_API } from '@/services/apiClient';
 import { useCustomers } from '@/hooks/useCustomers';
 import { claimCustomerAssignment } from '@/services/customerAssignmentService';
 import { getAssignedLoanApplicationId } from '@/services/customerService';
+import { setConversationCustomer } from '@/services/conversationService';
 import type { ChatMessage, ChatMode } from '@/types/chat';
 import type { ChatAttachment } from '@/types/attachment';
-import type { ChatSource } from '@/types/source';
+import type { ChatSource, SourceLocator } from '@/types/source';
 import type { UserProfile } from '@/types/user';
+import { useDemoSession } from '@/auth/demoSession';
+import { applyApprovalLimitAll } from '@/services/approvalScope';
 
 const FoundationPage = lazy(() => import('./FoundationPage'));
 
 /**
- * Người dùng demo — CHUYÊN VIÊN NGÂN HÀNG, không phải khách hàng.
+ * Người dùng của ứng dụng là CHUYÊN VIÊN NGÂN HÀNG, không phải khách hàng.
  * Theo đề bài, hệ chuyên gia số phục vụ vận hành nội bộ của SHB.
- * Khi có auth thật sẽ lấy từ phiên đăng nhập.
+ *
+ * Hồ sơ lấy từ phiên đăng nhập (`demoSession` ở chế độ demo, Keycloak khi chạy
+ * thật). Hằng số dưới đây chỉ là lưới an toàn cho khoảnh khắc phiên vừa bị xoá
+ * mà RequireAuth chưa kịp chuyển hướng về `/login`.
  */
-const DEMO_USER: UserProfile = {
-  id: 'staff-demo',
-  displayName: 'Nguyễn Minh Anh',
+const FALLBACK_USER: UserProfile = {
+  id: 'staff-unknown',
+  displayName: 'Chuyên viên SHB',
   role: 'credit-officer',
   department: 'Khối Tín dụng',
-  branch: 'CN Hà Nội',
+  branch: '—',
   approvalLimit: DEMO_APPROVAL_LIMIT,
 };
 
 export default function ChatPage() {
+  const session = useDemoSession();
+  const currentUser = session?.profile ?? FALLBACK_USER;
   const { message: messageApi, modal } = App.useApp();
   const screens = Grid.useBreakpoint();
   const [searchParams] = useSearchParams();
@@ -61,6 +70,7 @@ export default function ChatPage() {
   /* ---------------- Local UI state (không dùng TanStack Query) ---------------- */
 
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [highlightDoc, setHighlightDoc] = useState<HighlightDocument | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [sourceDrawerOpen, setSourceDrawerOpen] = useState(false);
@@ -139,6 +149,10 @@ export default function ChatPage() {
         }
       }
 
+      // Phiên gắn khách hàng nào thì câu hỏi được trả lời trong phạm vi khách đó.
+      const boundCustomerId =
+        conversations.find((item) => item.id === conversationId)?.customerId;
+
       setComposerValue('');
       await send({
         conversationId,
@@ -146,11 +160,13 @@ export default function ChatPage() {
         attachments,
         mode,
         assignmentLeaseToken: activeAssignmentLeaseToken,
+        ...(boundCustomerId ? { customerId: boundCustomerId } : {}),
       });
     },
     [
       activeAssignmentLeaseToken,
       activeConversationId,
+      conversations,
       createConversation,
       messageApi,
       mode,
@@ -287,10 +303,67 @@ export default function ChatPage() {
   const handleSelectCustomer = useCallback(
     (customer: Customer) => {
       setActiveCustomer(customer);
+      setHighlightDoc(null);
       setPanelOpen(true);
       void openCustomerConversation(customer);
     },
     [openCustomerConversation],
+  );
+
+  /**
+   * Upload hồ sơ khi chưa chọn khách hàng -> backend đã tự tạo khách nháp.
+   * Gắn khách đó vào hội thoại hiện tại (server) + panel hồ sơ (client);
+   * tên khách sẽ được vision cập nhật từ nội dung hồ sơ sau tin nhắn đầu.
+   */
+  const handleCustomerAutoCreated = useCallback(
+    (customerId: string) => {
+      if (activeConversationId) {
+        void setConversationCustomer(activeConversationId, customerId);
+      }
+      void customersQuery.refetch().then((result) => {
+        const created = result.data?.find((item) => item.id === customerId);
+        if (created) {
+          setActiveCustomer(created);
+          setPanelOpen(true);
+        }
+      });
+    },
+    [activeConversationId, customersQuery],
+  );
+
+  /** Bấm thumbnail hồ sơ highlight -> panel phải hiển thị ảnh đã đánh dấu. */
+  const handleOpenHighlightDocument = useCallback((doc: HighlightDocument) => {
+    setHighlightDoc(doc);
+    setPanelOpen(true);
+  }, []);
+
+  /**
+   * Bấm một trích dẫn -> mở đúng hồ sơ, đúng trang, khoanh đỏ đúng vùng.
+   *
+   * Vùng cần khoanh lấy từ chính các câu trả lời trong phiên: nếu không tìm được
+   * hồ sơ tương ứng thì không mở gì cả, tránh dẫn người dùng tới tài liệu sai.
+   */
+  const handleOpenLocator = useCallback(
+    (locator: SourceLocator) => {
+      const fromMessages = messages
+        .flatMap((message) => message.highlightDocuments ?? [])
+        .find((doc) => doc.regions?.some((region) => region.documentId === locator.documentId));
+
+      if (!fromMessages) {
+        messageApi.warning('Không tìm thấy hồ sơ gốc của trích dẫn này.');
+        return;
+      }
+
+      setHighlightDoc({
+        name: locator.documentTitle,
+        url: locator.documentUrl,
+        ...(fromMessages.regions ? { regions: fromMessages.regions } : {}),
+        activeRegionId: locator.regionId,
+      });
+      setPanelOpen(true);
+      setSourceDrawerOpen(false);
+    },
+    [messageApi, messages],
   );
 
   /** Xem hồ sơ khách hàng (từ card trong chat) -> mở panel, không đổi phiên chat. */
@@ -301,6 +374,27 @@ export default function ChatPage() {
       setPanelOpen(true);
     }
   }, [customers]);
+
+  /**
+   * Gợi ý "Mở phiên của X" -> chuyển hẳn sang phiên của khách hàng đó.
+   *
+   * Khác `handleViewCustomer` (chỉ mở panel hồ sơ): ở đây phải ĐỔI PHIÊN, vì
+   * câu hỏi về khách hàng chỉ được trả lời trong phiên của chính họ.
+   */
+  const handleOpenCustomerSession = useCallback(
+    (customerId: string) => {
+      const found = customers.find((item) => item.id === customerId);
+      if (!found) {
+        messageApi.warning('Khách hàng này không thuộc danh mục được phân công cho bạn.');
+        return;
+      }
+      setActiveCustomer(found);
+      setHighlightDoc(null);
+      setPanelOpen(true);
+      void openCustomerConversation(found);
+    },
+    [customers, messageApi, openCustomerConversation],
+  );
 
   const handleSelectConversation = useCallback((conversationId: string) => {
     setActiveAssignmentLeaseToken(undefined);
@@ -398,7 +492,10 @@ export default function ChatPage() {
 
   const showPanel = panelOpen && activeCustomer !== null;
   const customerRecords = useMemo(
-    () => (activeCustomer && USE_MOCK_API ? findLoansByCustomer(activeCustomer.id) : []),
+    () =>
+      activeCustomer && USE_MOCK_API
+        ? applyApprovalLimitAll(findLoansByCustomer(activeCustomer.id))
+        : [],
     [activeCustomer],
   );
 
@@ -431,6 +528,7 @@ export default function ChatPage() {
 
   const closePanel = useCallback(() => {
     setPanelOpen(false);
+    setHighlightDoc(null);
   }, []);
 
   const openFullProfile = useCallback(
@@ -449,7 +547,7 @@ export default function ChatPage() {
     loading: conversationsQuery.isLoading,
     error: conversationsQuery.error,
     onRetry: () => void conversationsQuery.refetch(),
-    user: DEMO_USER,
+    user: currentUser,
     onSelectConversation: handleSelectConversation,
     onCreateConversation: () => void handleCreateConversation(),
     onRenameConversation: handleRename,
@@ -472,7 +570,7 @@ export default function ChatPage() {
             title={activeConversation?.title ?? 'Trợ lý SHB'}
             mode={mode}
             onModeChange={handleModeChange}
-            user={DEMO_USER}
+            user={currentUser}
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={() => setSidebarCollapsed((value) => !value)}
             onOpenMobileNav={() => setMobileNavOpen(true)}
@@ -483,6 +581,9 @@ export default function ChatPage() {
             onFindBranch={handleFindBranch}
             hasSources={latestSources.length > 0}
             titleAsHeading={!showWelcome}
+            {...(activeConversation?.customerName
+              ? { sessionCustomerName: activeConversation.customerName }
+              : {})}
           />
         }
       >
@@ -504,10 +605,14 @@ export default function ChatPage() {
               onViewSources={handleViewSources}
               isStreaming={isStreaming}
               showWelcome={showWelcome}
-              staffName={DEMO_USER.displayName}
+              staffName={currentUser.displayName}
               customers={customers}
               onSelectCustomer={handleSelectCustomer}
+              onCustomerAutoCreated={handleCustomerAutoCreated}
+              onOpenHighlightDocument={handleOpenHighlightDocument}
               onViewCustomer={handleViewCustomer}
+              onOpenCustomerSession={handleOpenCustomerSession}
+              onOpenLocator={handleOpenLocator}
               onLoanDecision={handleLoanDecision}
               uploadContext={{
                 customerId: activeConversation?.customerId,
@@ -526,14 +631,22 @@ export default function ChatPage() {
                 aria-label="Kéo để đổi độ rộng panel"
                 onPointerDown={handleResizeStart}
               />
-              <CustomerWorkspacePanel
-                customer={activeCustomer}
-                records={customerRecords}
-                onClose={closePanel}
-                onOpenFullPage={openFullProfile}
-                onReviewInChat={handleReviewInChat}
-                onLoanDecision={handleLoanDecision}
-              />
+              {highlightDoc ? (
+                <HighlightDocumentViewer
+                  document={highlightDoc}
+                  onBack={() => setHighlightDoc(null)}
+                  onClose={closePanel}
+                />
+              ) : (
+                <CustomerWorkspacePanel
+                  customer={activeCustomer}
+                  records={customerRecords}
+                  onClose={closePanel}
+                  onOpenFullPage={openFullProfile}
+                  onReviewInChat={handleReviewInChat}
+                  onLoanDecision={handleLoanDecision}
+                />
+              )}
             </div>
           )}
         </div>
@@ -551,6 +664,7 @@ export default function ChatPage() {
         open={sourceDrawerOpen}
         onClose={() => setSourceDrawerOpen(false)}
         sources={activeSources}
+        onOpenLocator={handleOpenLocator}
       />
 
       {/* Mobile: panel hồ sơ hiển thị dạng Drawer gần full màn hình. */}
@@ -563,14 +677,22 @@ export default function ChatPage() {
           closable={false}
           styles={{ body: { padding: 0 } }}
         >
-          <CustomerWorkspacePanel
-            customer={activeCustomer}
-            records={customerRecords}
-            onClose={closePanel}
-            onOpenFullPage={openFullProfile}
-            onReviewInChat={handleReviewInChat}
-            onLoanDecision={handleLoanDecision}
-          />
+          {highlightDoc ? (
+            <HighlightDocumentViewer
+              document={highlightDoc}
+              onBack={() => setHighlightDoc(null)}
+              onClose={closePanel}
+            />
+          ) : (
+            <CustomerWorkspacePanel
+              customer={activeCustomer}
+              records={customerRecords}
+              onClose={closePanel}
+              onOpenFullPage={openFullProfile}
+              onReviewInChat={handleReviewInChat}
+              onLoanDecision={handleLoanDecision}
+            />
+          )}
         </Drawer>
       )}
 

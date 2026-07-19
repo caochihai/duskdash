@@ -7,8 +7,10 @@ import { LazyLoanBreakdownChart } from '@/components/charts/LazyLoanBreakdownCha
 import { DataTable } from '@/components/tables/DataTable';
 import { LoanApprovalCard } from '@/features/customer/components/LoanApprovalCard';
 import { CustomerSummaryCard } from '@/features/customer/components/CustomerSummaryCard';
+import { ExpertReport } from './ExpertReport';
 import type { MessageBlock } from '@/types/chat';
 import type { LoanApplication, LoanApplicationStatus } from '@/types/customer';
+import type { SourceLocator } from '@/types/source';
 import styles from './AssistantMessage.module.css';
 
 export interface MessageBlocksProps {
@@ -18,6 +20,8 @@ export interface MessageBlocksProps {
   disabled?: boolean;
   /** Mở hồ sơ khách hàng (từ loanApproval / customerSummary block). */
   onViewCustomer?: (customerId: string) => void;
+  /** Mở hồ sơ gốc và khoanh đỏ vùng của một trích dẫn trong báo cáo. */
+  onOpenLocator?: (locator: SourceLocator) => void;
   /** Ghi nhận quyết định phê duyệt. */
   onLoanDecision?: (
     application: LoanApplication,
@@ -42,6 +46,7 @@ export function MessageBlocks({
   onPrompt,
   disabled = false,
   onViewCustomer,
+  onOpenLocator,
   onLoanDecision,
 }: MessageBlocksProps) {
   return (
@@ -50,6 +55,15 @@ export function MessageBlocks({
         const key = `${block.type}-${index}`;
 
         switch (block.type) {
+          case 'expertReport':
+            return (
+              <ExpertReport
+                key={key}
+                bundle={block.bundle}
+                {...(onOpenLocator ? { onOpenLocator } : {})}
+              />
+            );
+
           case 'markdown':
             return <MarkdownContent key={key} content={block.content} />;
 

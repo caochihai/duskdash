@@ -54,7 +54,7 @@ export const QUICK_PROMPTS: readonly QuickPrompt[] = [
     title: 'Kiểm tra tuân thủ',
     description: 'Sàng lọc AML/KYC và rủi ro pháp lý',
     icon: SafetyCertificateOutlined,
-    prompt: 'Kiểm tra tuân thủ AML/KYC cho khách hàng Công ty TNHH Thương mại Minh Phát.',
+    prompt: 'Kiểm tra tuân thủ AML/KYC cho khách hàng Công ty CP Bao bì VinaNova.',
   },
   {
     id: 'process-lookup',
