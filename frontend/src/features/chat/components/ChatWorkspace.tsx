@@ -1,5 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { MessageList } from './MessageList';
+import type { HighlightDocument } from './HighlightDocumentViewer';
 import { WelcomeState } from './WelcomeState';
 import { ChatComposer } from './ChatComposer';
 import type { ChatMessage } from '@/types/chat';
@@ -35,7 +36,7 @@ export interface ChatWorkspaceProps {
   /** Backend tự tạo khách hàng nháp khi upload hồ sơ chưa gắn khách. */
   onCustomerAutoCreated?: (customerId: string) => void;
   /** Bấm thumbnail hồ sơ highlight trong chat -> mở ở panel bên phải. */
-  onOpenHighlightDocument?: (doc: { name: string; url: string }) => void;
+  onOpenHighlightDocument?: (doc: HighlightDocument) => void;
   onViewCustomer?: (customerId: string) => void;
   onLoanDecision?: (
     application: LoanApplication,

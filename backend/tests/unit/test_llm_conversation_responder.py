@@ -103,11 +103,11 @@ def test_render_highlight_markdown_levels_and_links() -> None:
     )
     links = [AnnotatedImage(key="highlights/c/x-0.jpg", url="https://minio/presigned/x")]
     content = render_highlight_markdown(result, links)
-    assert "🔴 **[CẢNH BÁO]**" in content
-    assert "🟡 **[NHẤN MẠNH]**" in content
-    assert "Khác với số CCCD" in content
-    # Ảnh highlight đi qua metadata.highlight_documents (gallery), không chèn
-    # link vào text để chat giữ vai trò tương tác thuần.
+    # Segment + link ảnh đều đi qua metadata (dẫn chứng tương tác trên client),
+    # content chỉ giữ câu trả lời + tóm tắt để chat gọn gàng.
+    assert "Tóm tắt hồ sơ" in content
+    assert "Giấy đăng ký kinh doanh" in content
+    assert "🔴 **[CẢNH BÁO]**" not in content
     assert "https://minio/presigned/x" not in content
 
 

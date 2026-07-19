@@ -182,8 +182,16 @@ export interface ChatMessage {
   sources?: ChatSource[];
   attachments?: ChatAttachment[];
   suggestions?: ChatSuggestion[];
-  /** Ảnh hồ sơ đã highlight (khung màu vẽ trực tiếp) — bấm để xem bản to. */
-  highlightDocuments?: { name: string; url: string }[];
+  /**
+   * Ảnh hồ sơ đã highlight (khung màu vẽ trực tiếp) — bấm để xem bản to.
+   * `regions` là các vùng dẫn chứng thật từ vision (metadata.highlight_segments)
+   * để viewer khoanh đúng dòng và điều hướng giữa các trích dẫn.
+   */
+  highlightDocuments?: {
+    name: string;
+    url: string;
+    regions?: import('@/types/highlight').DocumentRegion[];
+  }[];
   /** Phase hiện tại khi status = 'thinking'. */
   phase?: AIProcessingPhase;
   /**
