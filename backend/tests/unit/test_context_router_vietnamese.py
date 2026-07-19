@@ -152,3 +152,35 @@ async def test_authorized_attachments_are_preserved_in_routing_decision() -> Non
     )
 
     assert decision.attachment_ids == attachment_ids
+
+
+@pytest.mark.asyncio
+async def test_attachment_caption_without_keywords_routes_to_document_review() -> None:
+    """Câu dẫn ngắn khi gửi kèm hồ sơ không được rơi vào nhánh từ chối."""
+    decision = await _route(
+        "Tôi đã cung cấp thêm 3 hợp đồng",
+        include_loan=False,
+        attachment_ids=(uuid4(),),
+    )
+
+    assert decision.route_type is not RouteType.REFUSE
+    assert "DOCUMENT" in decision.required_agents
+
+
+@pytest.mark.asyncio
+async def test_attachment_with_no_matching_keywords_still_reviewed() -> None:
+    decision = await _route(
+        "Gửi bạn xem thử",
+        include_loan=False,
+        attachment_ids=(uuid4(),),
+    )
+
+    assert decision.route_type is not RouteType.REFUSE
+    assert decision.intent == "REVIEW_DOCUMENTS"
+
+
+@pytest.mark.asyncio
+async def test_off_topic_without_attachments_still_refused() -> None:
+    decision = await _route("Viết thơ tặng tôi", include_loan=False)
+
+    assert decision.route_type is RouteType.REFUSE

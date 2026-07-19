@@ -47,6 +47,17 @@ _DOCUMENT_TERMS = (
     "dấu đỏ",
     "con dấu",
     "chữ ký",
+    "hợp đồng",
+    "sao kê",
+    "chứng từ",
+    "giấy tờ",
+    "tài liệu",
+    "sổ hồng",
+    "sổ đỏ",
+    "giấy chứng nhận",
+    "bảng lương",
+    "căn cước",
+    "hộ khẩu",
 )
 _COMPLIANCE_TERMS = (
     "chính sách",
@@ -129,6 +140,12 @@ class ContextRouter:
             return _refusal(request, normalized)
 
         domain_agents = _domain_agents(lowered)
+        # Tin nhắn kèm hồ sơ đính kèm (đã qua kiểm tra quyền) là nghiệp vụ
+        # xem xét chứng từ theo định nghĩa — câu dẫn ngắn kiểu "Tôi đã cung
+        # cấp thêm 3 hợp đồng" không được rơi vào nhánh từ chối vì thiếu
+        # từ khoá. DOCUMENT đứng đầu thứ tự DAG chuẩn nên chèn trước.
+        if request.attachment_ids and "DOCUMENT" not in domain_agents:
+            domain_agents = ("DOCUMENT", *domain_agents)
         is_definition = (
             _contains_any(lowered, _DEFINITION_TERMS)
             and bool(domain_agents or _contains_any(lowered, _REPAYMENT_TERMS))

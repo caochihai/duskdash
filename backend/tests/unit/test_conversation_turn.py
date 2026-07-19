@@ -97,6 +97,7 @@ class InMemoryConversationRepository:
         sender_id: UUID | None = None,
         parent_message_id: UUID | None = None,
         attachment_ids: list[UUID] | tuple[UUID, ...] = (),
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any] | None:
         if await self.get(conversation_id, employee_id=employee_id) is None:
             return None
@@ -117,6 +118,7 @@ class InMemoryConversationRepository:
             "complexity_level": route.get("complexity_level"),
             "analysis_case_id": route.get("analysis_case_id"),
             "attachment_ids": list(dict.fromkeys(attachment_ids)),
+            "metadata": dict(metadata) if metadata else None,
         }
         self.message_rows.append(row)
         return row
