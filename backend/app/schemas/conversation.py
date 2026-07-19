@@ -55,6 +55,7 @@ class MessageResponse(APIModel):
     content: str
     route: dict[str, Any] | None = None
     attachment_ids: list[UUID] = Field(default_factory=list)
+    metadata: dict[str, Any] | None = None
 
 
 class ConversationReply(APIModel):

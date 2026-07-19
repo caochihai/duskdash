@@ -63,6 +63,8 @@ interface RawHighlightSegment {
   reason?: string;
   legal_basis?: string | null;
   bbox_2d?: number[] | null;
+  /** 'azure' = toạ độ OCR chính xác; 'model' = vision ước lượng. */
+  bbox_source?: string | null;
 }
 
 /**
@@ -76,9 +78,16 @@ function segmentsToRegions(value: unknown): Map<number, DocumentRegion[]> {
   (value as RawHighlightSegment[]).forEach((segment, index) => {
     const bbox = segment?.bbox_2d;
     if (!Array.isArray(bbox) || bbox.length !== 4) return;
-    const [, y1, , y2] = bbox;
+    const [x1, y1, x2, y2] = bbox;
     const top = Math.max(0, Math.min(y1, y2) / 1000 - 0.005);
     const height = Math.max(0.014, Math.abs(y2 - y1) / 1000 + 0.01);
+    // Azure OCR cho toạ độ ngang chính xác -> khoanh đúng vùng chữ;
+    // bbox do vision ước lượng thì giữ dải full chiều ngang theo dòng.
+    const precise = segment.bbox_source === 'azure';
+    const left = precise ? Math.max(0, Math.min(x1, x2) / 1000 - 0.006) : 0.02;
+    const regionWidth = precise
+      ? Math.max(0.03, Math.abs(x2 - x1) / 1000 + 0.012)
+      : 0.96;
     const documentIndex = typeof segment.document_index === 'number' ? segment.document_index : 0;
     const badge = SEGMENT_LEVEL_BADGE[segment.level ?? ''] ?? segment.level ?? '';
     const label = [badge, segment.reason, segment.legal_basis ? `⚖️ ${segment.legal_basis}` : '']
@@ -87,9 +96,9 @@ function segmentsToRegions(value: unknown): Map<number, DocumentRegion[]> {
     const regions = byDocument.get(documentIndex) ?? [];
     regions.push({
       id: `seg-${index}`,
-      x: 0.02,
+      x: left,
       y: top,
-      w: 0.96,
+      w: Math.min(regionWidth, 1 - left),
       h: Math.min(height, 1 - top),
       quote: segment.text ?? '',
       label,

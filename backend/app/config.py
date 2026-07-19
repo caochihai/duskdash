@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     # gemma-4-31B-it thắng benchmark OCR nội bộ (CER 0.004, Numeric Acc 97%);
     # Qwen2.5-VL nhanh hơn nhưng có lỗi đơn vị tiền tệ nguy hiểm.
     vision_model_name: str = "gemma-4-31B-it"
+    # Azure Document Intelligence (tuỳ chọn): bbox từng dòng chính xác cho
+    # highlight; thiếu env thì fallback bbox do vision ước lượng.
+    azure_di_endpoint: str | None = None
+    azure_di_key: SecretStr | None = None
+    azure_di_api_version: str = "2024-11-30"
     embedding_provider: str = "mock"
     embedding_api_url: str | None = None
     embedding_api_key: SecretStr | None = None

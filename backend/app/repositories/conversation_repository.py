@@ -193,6 +193,7 @@ class ConversationRepository:
         sender_id: UUID | None = None,
         parent_message_id: UUID | None = None,
         attachment_ids: Sequence[UUID] = (),
+        metadata: Mapping[str, Any] | None = None,
     ) -> Record | None:
         normalized_sender_type = sender_type.strip().upper()
         if normalized_sender_type not in {"EMPLOYEE", "ASSISTANT"}:
@@ -216,6 +217,7 @@ class ConversationRepository:
             "route_type": route.get("route_type"),
             "complexity_level": complexity,
             "analysis_case_id": UUID(str(analysis_case)) if analysis_case else None,
+            "metadata": dict(metadata) if metadata else None,
             "employee_id": employee_id,
         }
         row = await execute_returning(
@@ -224,11 +226,11 @@ class ConversationRepository:
             INSERT INTO ai.message (
                 id, conversation_id, sender_type, sender_id, content,
                 created_at, parent_message_id, route_type, complexity_level,
-                analysis_case_id
+                analysis_case_id, metadata
             )
             SELECT :id, c.id, :sender_type, :sender_id, :content,
                    :created_at, :parent_message_id, :route_type,
-                   :complexity_level, :analysis_case_id
+                   :complexity_level, :analysis_case_id, CAST(:metadata AS jsonb)
             FROM ai.conversation AS c
             WHERE c.id = :conversation_id AND c.employee_id = :employee_id
               AND (

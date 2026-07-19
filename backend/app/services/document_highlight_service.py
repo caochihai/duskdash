@@ -9,6 +9,7 @@ vùng cần chú ý rồi đưa lại cho người dùng qua presigned URL.
 
 from __future__ import annotations
 
+import asyncio
 import io
 import json
 import uuid
@@ -19,6 +20,7 @@ from pydantic import BaseModel, Field
 
 from app.logging import get_logger
 from app.providers.llm.base import LLMProvider
+from app.providers.ocr.azure_read import AzureReadClient, match_segment_bbox
 from app.storage.interface import Storage
 
 logger = get_logger(__name__)
@@ -94,6 +96,10 @@ class HighlightSegment(BaseModel):
         description="Văn bản pháp luật/quy định làm căn cứ cho highlight này",
     )
     bbox_2d: list[int] | None = Field(default=None, description="[x1,y1,x2,y2] thang 0-1000")
+    bbox_source: str | None = Field(
+        default=None,
+        description="'azure' = toạ độ chính xác từ OCR; 'model' = vision ước lượng",
+    )
 
 
 class MissingDocument(BaseModel):
@@ -161,9 +167,16 @@ def render_highlight_markdown(result: HighlightResult, links: list[AnnotatedImag
 class DocumentHighlighter:
     """Đọc ảnh hồ sơ, sinh highlight và vẽ khung màu trả lại người dùng."""
 
-    def __init__(self, vision_llm: LLMProvider, storage: Storage | None) -> None:
+    def __init__(
+        self,
+        vision_llm: LLMProvider,
+        storage: Storage | None,
+        *,
+        ocr: AzureReadClient | None = None,
+    ) -> None:
         self._vision = vision_llm
         self._storage = storage
+        self._ocr = ocr
 
     @property
     def model_name(self) -> str:
@@ -185,12 +198,39 @@ class DocumentHighlighter:
             f"LỊCH SỬ HỘI THOẠI GẦN NHẤT:\n{memory_block}\n\n"
             f"Số ảnh hồ sơ đính kèm: {len(images)} (đánh số từ 0)."
         )
-        return await self._vision.generate_structured(
+
+        # Vision phân tích nội dung; Azure OCR (nếu bật) chạy SONG SONG lấy toạ
+        # độ dòng chính xác — logic phân tích không đổi, chỉ nâng chất bbox.
+        vision_task = self._vision.generate_structured(
             system_prompt=_SYSTEM_PROMPT,
             user_prompt=user_prompt,
             response_model=HighlightResult,
             images=images,
         )
+        if self._ocr is None:
+            return await vision_task
+
+        result, ocr_pages = await asyncio.gather(
+            vision_task,
+            asyncio.gather(*(self._ocr.analyze(image) for image in images)),
+        )
+        matched = 0
+        for segment in result.segments:
+            if segment.document_index >= len(ocr_pages):
+                continue
+            bbox = match_segment_bbox(segment.text, ocr_pages[segment.document_index])
+            if bbox is not None:
+                segment.bbox_2d = bbox
+                segment.bbox_source = "azure"
+                matched += 1
+            elif segment.bbox_2d:
+                segment.bbox_source = "model"
+        logger.info(
+            "HIGHLIGHT_BBOX_SOURCES",
+            azure_matched=matched,
+            total_segments=len(result.segments),
+        )
+        return result
 
     async def annotate_and_upload(
         self,
@@ -225,21 +265,27 @@ class DocumentHighlighter:
                 margin = max(4, width // 60)
                 for segment in segments:
                     x1, y1, x2, y2 = segment.bbox_2d  # type: ignore[misc]
-                    # Vision model bắt vị trí DỌC của dòng khá chuẩn nhưng hay
-                    # lệch toạ độ ngang -> vẽ dải highlight full chiều ngang
-                    # theo dòng (kiểu bút dạ quang), nới nhẹ chiều cao cho dễ đọc.
+                    color = _LEVEL_COLOR.get(segment.level, (243, 112, 33))
                     top = max(0, min(y1, y2) * height // 1000 - height // 200)
                     bottom = min(height, max(y1, y2) * height // 1000 + height // 200)
                     if bottom - top < 6:
                         bottom = min(height, top + max(6, height // 90))
-                    band = (margin, top, width - margin, bottom)
-                    color = _LEVEL_COLOR.get(segment.level, (243, 112, 33))
-                    overlay.rectangle(band, fill=color + (46,))
-                    # Vạch màu đậm sát mép trái như tab đánh dấu mức độ.
-                    overlay.rectangle(
-                        (margin, top, margin + max(6, width // 150), bottom),
-                        fill=color + (230,),
-                    )
+                    if segment.bbox_source == "azure":
+                        # Toạ độ OCR chính xác -> khoanh ĐÚNG vùng chữ.
+                        left = max(0, min(x1, x2) * width // 1000 - width // 200)
+                        right = min(width, max(x1, x2) * width // 1000 + width // 200)
+                        box = (left, top, right, bottom)
+                        overlay.rectangle(box, fill=color + (46,))
+                        overlay.rectangle(box, outline=color + (235,), width=max(2, width // 400))
+                    else:
+                        # Vision ước lượng: dọc chuẩn, ngang hay lệch -> dải full
+                        # chiều ngang theo dòng + tab màu mép trái.
+                        band = (margin, top, width - margin, bottom)
+                        overlay.rectangle(band, fill=color + (46,))
+                        overlay.rectangle(
+                            (margin, top, margin + max(6, width // 150), bottom),
+                            fill=color + (230,),
+                        )
                 buffer = io.BytesIO()
                 image.save(buffer, format="JPEG", quality=90)
                 key = f"highlights/{conversation_id}/{uuid.uuid4().hex}-{index}.jpg"

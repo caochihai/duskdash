@@ -391,6 +391,9 @@ class ConversationService:
             sender_type="ASSISTANT",
             sender_id=None,
             parent_message_id=UUID(str(row["id"])),
+            # Lưu metadata inspectable (citations, highlight, gợi ý) để mở
+            # lại phiên chat vẫn còn nút ảnh/trích dẫn — không chứa reasoning.
+            metadata=reply.metadata or None,
         )
         if assistant_row is None:
             raise RuntimeError("Conversation changed concurrently")

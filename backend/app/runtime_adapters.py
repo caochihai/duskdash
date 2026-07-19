@@ -21,6 +21,7 @@ from app.db import session as db_session
 from app.db.rls_context import set_rls_context
 from app.repositories.identity_repository import IdentityRepository
 from app.providers.llm.openai_compat import OpenAICompatLLMProvider
+from app.providers.ocr.azure_read import AzureReadClient
 from app.services.agent_engine_client import AgentEngineClient
 from app.services.document_highlight_service import DocumentHighlighter
 from app.services.llm_conversation_responder import LLMConversationResponder
@@ -314,6 +315,15 @@ class DefaultRuntimeAdapters:
                 model_name=settings.vision_model_name,
                 timeout_seconds=150.0,
             )
+            azure_ocr = (
+                AzureReadClient(
+                    endpoint=settings.azure_di_endpoint,
+                    api_key=settings.azure_di_key.get_secret_value(),
+                    api_version=settings.azure_di_api_version,
+                )
+                if settings.azure_di_endpoint and settings.azure_di_key is not None
+                else None
+            )
             responder = LLMConversationResponder(
                 OpenAICompatLLMProvider(
                     provider=settings.llm_provider,
@@ -324,7 +334,7 @@ class DefaultRuntimeAdapters:
                 engine=engine,
                 engine_business_id=settings.agent_engine_business_id,
                 engine_wait_seconds=settings.agent_engine_wait_seconds,
-                highlighter=DocumentHighlighter(vision_llm, storage),
+                highlighter=DocumentHighlighter(vision_llm, storage, ocr=azure_ocr),
                 storage=storage,
             )
         else:
